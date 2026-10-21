@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/backend/">
+    <Project Path="backend/HAQPOS.Api/HAQPOS.Api.csproj" />
+    <Project Path="backend/HAQPOS.Application/HAQPOS.Application.csproj" />
+    <Project Path="backend/HAQPOS.Domain/HAQPOS.Domain.csproj" />
+    <Project Path="backend/HAQPOS.Infrastructure/HAQPOS.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HAQPOS.UnitTests/HAQPOS.UnitTests.csproj" />
+    <Project Path="tests/HAQPOS.IntegrationTests/HAQPOS.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

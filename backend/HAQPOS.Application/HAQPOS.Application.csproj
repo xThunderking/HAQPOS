@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../HAQPOS.Domain/HAQPOS.Domain.csproj" />
+  </ItemGroup>
+</Project>
