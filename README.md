@@ -1,6 +1,6 @@
 # HAQPOS
 
-Base técnica inicial para un futuro sistema de punto de venta de hospital privado. Incluye arquitectura, proyectos, dependencias, configuración y verificaciones técnicas. **No se implementó ningún módulo de negocio.**
+Sistema de punto de venta para hospital privado. El primer módulo implementado es **control de usuarios**: administrador, supervisor y cajero, acceso por número de empleado y contraseña temporal con cambio obligatorio. [Uso, seguridad y administración inicial](docs/USERS_SECURITY.md).
 
 Visual Studio 2026 administra la solución .NET; **Vite+** es la herramienta principal del frontend. No se necesita Docker para desarrollar frontend y API en Windows.
 
@@ -110,6 +110,7 @@ Inicia PostgreSQL portable y la API:
 
 ```powershell
 ./infrastructure/scripts/Start-LocalPostgres.ps1
+dotnet run --project backend/HAQPOS.Api --launch-profile https -- --migrate
 dotnet run --project backend/HAQPOS.Api --launch-profile https
 ```
 
@@ -123,7 +124,7 @@ vp dev
 
 Abre **https://localhost:5173**. La API responde en **https://localhost:7143/api/health**. Vite+ proxifica /api al backend y verifica su certificado.
 
-La base local es PostgreSQL 18.6 en **127.0.0.1:55432**, base `haqpos`, sin tablas públicas. La conexión privada ya se guardó en **User Secrets**. El PostgreSQL 16 preexistente permanece separado.
+La base local es PostgreSQL 18.6 en **127.0.0.1:55432**, base `haqpos`, con usuarios, sesiones y auditoría de seguridad. La conexión privada se obtiene de **User Secrets**. El PostgreSQL 16 preexistente permanece separado. El primer administrador se crea mediante la [herramienta local](docs/USERS_SECURITY.md), sin registro público ni contraseña predeterminada.
 
 Para un clon nuevo instala las herramientas indicadas y configura PostgreSQL 18 nativo o el contenedor opcional. Los binarios portables y secretos en .tools están ignorados y no viajan en Git. Consulta [DEVELOPMENT.md](docs/DEVELOPMENT.md) para configurar la cadena externa, cambiar puertos y usar Docker solo para la base.
 
@@ -150,7 +151,7 @@ vp test run
 vp build
 ```
 
-`vp test` está disponible; `run` evita el modo observación. dotnet-ef 10.0.13 queda restaurado para trabajo futuro. No se crearon ni aplicaron migraciones.
+`vp test` está disponible; `run` evita el modo observación. La migración `UserManagement` contiene el esquema de acceso. Las pruebas reales de autenticación usan `HAQPOS_TEST_CONNECTION` y esquemas aleatorios aislados; consulta [USERS_SECURITY.md](docs/USERS_SECURITY.md).
 
 ### Resultados reales de preparación: 21 de octubre de 2026
 

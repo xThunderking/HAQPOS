@@ -18,6 +18,7 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0.13 AS runtime
 WORKDIR /app
 ENV ASPNETCORE_HTTP_PORTS=8080
 COPY --from=build /app/publish .
+RUN mkdir -p /var/lib/haqpos/data-protection && chown -R "$APP_UID:$APP_UID" /var/lib/haqpos
 USER $APP_UID
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 CMD ["dotnet", "HAQPOS.Api.dll", "--health-probe"]

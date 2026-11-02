@@ -14,7 +14,7 @@ public sealed class HealthTests
     public async Task LivenessDoesNotRequireDatabaseConfigurationOrConnection()
     {
         await using var factory = new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(builder => builder.UseEnvironment("Production"));
+            .WithWebHostBuilder(builder => builder.UseEnvironment("Testing"));
         using var client = factory.CreateClient(new() { BaseAddress = new Uri("https://localhost") });
 
         var response = await client.GetAsync("/api/health");
@@ -26,7 +26,7 @@ public sealed class HealthTests
     }
 
     [Fact]
-    public async Task UnhandledErrorReturnsProblemDetailsWithoutInternalDetails()
+    public async Task DatabaseDiagnosticRequiresAnAdministrator()
     {
         await using var factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder => builder.UseEnvironment("Development")
@@ -34,15 +34,25 @@ public sealed class HealthTests
                     new Dictionary<string, string?> { ["ConnectionStrings:Haqpos"] = "" })));
         using var client = factory.CreateClient(new() { BaseAddress = new Uri("https://localhost") });
 
-        // No connection string is supplied, deliberately failing DI at the diagnostic endpoint.
+        // Authorization denies access before the diagnostic resolves a database connection.
         var response = await client.GetAsync("/api/health/database");
-        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
-
-        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
-        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
-        Assert.Equal("Ocurrió un error interno.", problem?.Title);
-        Assert.Null(problem?.Detail);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     private sealed record HealthResponse(string Status);
+
+    [Fact]
+    public async Task ProductionRequiresEncryptedPersistentSessionKeys()
+    {
+        await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+            builder.UseEnvironment("Production").ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["DataProtection:KeysPath"] = "",
+                    ["DataProtection:CertificatePath"] = "",
+                    ["DataProtection:PrivateKeyPath"] = ""
+                })));
+        var error = Assert.Throws<InvalidOperationException>(() => factory.CreateClient());
+        Assert.Contains("DataProtection", error.Message);
+    }
 }

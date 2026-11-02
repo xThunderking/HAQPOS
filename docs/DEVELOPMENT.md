@@ -76,7 +76,7 @@ Abre `HAQPOS.slnx` en Visual Studio 2026, establece **HAQPOS.Api** como proyecto
 ./infrastructure/scripts/Start-LocalPostgres.ps1 -Stop
 ```
 
-No es un servicio de Windows y puede ser necesario iniciarla después de reiniciar el equipo. Se comprobó PostgreSQL 18.6 mediante SQL, cero tablas públicas y conexión desde EF Core. La contraseña no se imprime en los scripts.
+No es un servicio de Windows y puede ser necesario iniciarla después de reiniciar el equipo. PostgreSQL 18.6 aloja ahora las tablas de usuarios, sesiones y auditoría. La contraseña de conexión no se imprime en los scripts. Aplica la migración con `dotnet run --project backend/HAQPOS.Api --launch-profile https -- --migrate`.
 
 ### Instalación nativa en otro equipo
 

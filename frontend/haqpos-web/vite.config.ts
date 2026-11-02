@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => {
     new URL("../../.tools/certs/localhost.pem", import.meta.url),
   );
   const keyPath = fileURLToPath(new URL("../../.tools/certs/localhost.key", import.meta.url));
+  const apiProxyTarget = env.API_PROXY_TARGET || "https://localhost:7143";
   const certificate =
     existsSync(certificatePath) && existsSync(keyPath)
       ? { cert: readFileSync(certificatePath), key: readFileSync(keyPath) }
@@ -26,10 +27,13 @@ export default defineConfig(({ mode }) => {
       https: certificate,
       proxy: {
         "/api": {
-          target: env.API_PROXY_TARGET || "https://localhost:7143",
+          target: apiProxyTarget,
           changeOrigin: true,
           secure: true,
-          agent: certificate ? new Agent({ ca: certificate.cert }) : undefined,
+          agent:
+            certificate && apiProxyTarget.startsWith("https:")
+              ? new Agent({ ca: certificate.cert })
+              : undefined,
         },
       },
     },

@@ -123,14 +123,6 @@
         "resolved": "10.0.13",
         "contentHash": "zBx6VeEz/hkhlm0BJ2V+9xebUuDDIszcKvurJceQHuZPEXuXubrL6Lneo9VZiliRyJbQlB2oNKLkJXd3gHteQA=="
       },
-      "Microsoft.EntityFrameworkCore.Relational": {
-        "type": "Transitive",
-        "resolved": "10.0.13",
-        "contentHash": "QU/sbTtDR5wVAJRVecC1GwM7mwH8bvKOZNm+lulzMr5rhjdb8DDEFIqqdhF08JIo51DPv5uQdZ1nXoZsD5pTag==",
-        "dependencies": {
-          "Microsoft.EntityFrameworkCore": "10.0.13"
-        }
-      },
       "Microsoft.Extensions.DependencyModel": {
         "type": "Transitive",
         "resolved": "10.0.13",
@@ -295,6 +287,7 @@
           "HAQPOS.Application": "[1.0.0, )",
           "HAQPOS.Domain": "[1.0.0, )",
           "Microsoft.EntityFrameworkCore": "[10.0.13, )",
+          "Microsoft.EntityFrameworkCore.Relational": "[10.0.13, )",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )"
         }
       },
@@ -306,6 +299,15 @@
         "dependencies": {
           "Microsoft.EntityFrameworkCore.Abstractions": "10.0.13",
           "Microsoft.EntityFrameworkCore.Analyzers": "10.0.13"
+        }
+      },
+      "Microsoft.EntityFrameworkCore.Relational": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.13, )",
+        "resolved": "10.0.13",
+        "contentHash": "QU/sbTtDR5wVAJRVecC1GwM7mwH8bvKOZNm+lulzMr5rhjdb8DDEFIqqdhF08JIo51DPv5uQdZ1nXoZsD5pTag==",
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "10.0.13"
         }
       },
       "Npgsql.EntityFrameworkCore.PostgreSQL": {

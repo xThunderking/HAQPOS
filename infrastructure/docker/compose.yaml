@@ -27,6 +27,13 @@ services:
       ConnectionStrings__Haqpos: Host=db;Port=5432;Database=${POSTGRES_DB:-haqpos};Username=${POSTGRES_USER:-haqpos};Password=${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}
       AllowedHosts: ${APP_HOST:-haqpos.hospital.local};localhost;127.0.0.1;api
       ReverseProxy__KnownProxy: 172.30.43.10
+      DataProtection__KeysPath: /var/lib/haqpos/data-protection
+      DataProtection__CertificatePath: /run/haqpos-protection/certificate.pem
+      DataProtection__PrivateKeyPath: /run/haqpos-protection/private.key
+    volumes:
+      - data_protection_keys:/var/lib/haqpos/data-protection
+      - ${DATA_PROTECTION_CERT_PATH:?Define DATA_PROTECTION_CERT_PATH}:/run/haqpos-protection/certificate.pem:ro
+      - ${DATA_PROTECTION_KEY_PATH:?Define DATA_PROTECTION_KEY_PATH}:/run/haqpos-protection/private.key:ro
     depends_on:
       db:
         condition: service_healthy
@@ -53,6 +60,7 @@ services:
 
 volumes:
   postgres_data:
+  data_protection_keys:
 
 networks:
   database:

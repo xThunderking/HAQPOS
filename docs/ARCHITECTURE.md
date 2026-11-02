@@ -1,6 +1,6 @@
-# Arquitectura inicial
+# Arquitectura
 
-HAQPOS contiene exclusivamente la base técnica de un futuro punto de venta hospitalario. No contiene módulos, entidades de negocio, migraciones, tablas públicas, datos de demostración, autenticación ni autorización.
+HAQPOS incorpora el módulo de control de usuarios con PostgreSQL, autenticación por cookie y autorización en la API. El número de empleado es el usuario. Los tres roles son Administrador, Supervisor y Cajero. [Políticas y operación](USERS_SECURITY.md).
 
 ## Capas y dependencias
 
@@ -13,18 +13,18 @@ flowchart TD
   Application --> Domain
 ```
 
-- **Domain**: proyecto independiente, sin entidades ni dependencias externas.
-- **Application**: referencia Domain; reservado para casos de uso futuros.
-- **Infrastructure**: registro de persistencia con DI nativa, EF Core 10 y Npgsql. `HaqposDbContext` no contiene `DbSet`, entidades ni creación automática de esquema.
-- **Api**: composición de servicios, Serilog JSON, OpenAPI en Development, ProblemDetails, `IExceptionHandler` y salud técnica.
+- **Domain**: `UserAccount`, `UserRole`, sesiones y eventos de seguridad, sin dependencias externas.
+- **Application**: contratos públicos y reglas de número de empleado, nombre y contraseñas.
+- **Infrastructure**: EF Core/Npgsql, migraciones, hash de contraseñas y `UserService`. Las transacciones preservan los cambios de usuario y sus eventos de auditoría.
+- **Api**: cookies, autorización, CSRF, limitación de intentos, endpoints, comandos locales, Serilog y ProblemDetails.
 
-No se utilizan repositorios genéricos, mediadores, servicios ficticios ni interfaces vacías. Los proyectos Domain y Application solo necesitan sus archivos de proyecto hasta que existan funcionalidades autorizadas.
+No se utilizan repositorios genéricos, mediadores ni servicios ficticios. El esquema cambia únicamente mediante migraciones explícitas; el arranque normal no las aplica automáticamente.
 
 ## Salud, errores y configuración
 
 `GET /api/health` devuelve `{"status":"ok"}` sin abrir conexiones a PostgreSQL. Permite comprobar la ejecución de la API aun sin base disponible.
 
-`GET /api/health/database`, solo en Development, comprueba `Database.CanConnectAsync`. No modifica esquema ni datos. Un fallo devuelve ProblemDetails; los errores internos se registran y la respuesta no incluye trazas. `/openapi/v1.json` también está limitado a Development.
+`GET /api/health/database`, solo en Development y para administradores con contraseña personal, comprueba `Database.CanConnectAsync`. No modifica esquema ni datos. Un fallo devuelve ProblemDetails; los errores internos se registran y la respuesta no incluye trazas. `/openapi/v1.json` también está limitado a Development.
 
 La cadena `ConnectionStrings:Haqpos` se obtiene de User Secrets o de `ConnectionStrings__Haqpos`. Las configuraciones versionadas solo contienen parámetros no sensibles. ASP.NET Core conserva su precedencia estándar: appsettings, archivo del entorno, User Secrets en Development, variables de entorno y argumentos.
 
@@ -32,7 +32,7 @@ El acceso habitual desde React comparte origen: Vite+ en desarrollo y Nginx en p
 
 ## Frontend
 
-React estricto, React Router, TanStack Query, cliente HTTP con Fetch y alias `@/`. Una única pantalla muestra el texto solicitado e indica la disponibilidad de la API. No hay navegación empresarial.
+React estricto, React Router, TanStack Query, cliente HTTP con Fetch y alias `@/`. Incluye acceso, cambio obligatorio de contraseña, administración de usuarios, actividad de seguridad y espacio inicial por rol. El estado de sesión se consulta al servidor; no se guardan contraseñas ni tokens de sesión en almacenamiento JavaScript. Las rutas restringidas también se autorizan en la API.
 
 Vite+ 1.3.0 administra el frontend con `vp`. `defineConfig`, `loadEnv` y `lazyPlugins` se importan de `vite-plus`; las pruebas de `vite-plus/test`. `vp check` ejecuta Oxfmt, Oxlint y comprobación de tipos con `typeAware` y `typeCheck`.
 

@@ -10,8 +10,8 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "ASPNETCORE_HTTPS_PORT": "7143",
-        "Kestrel__Certificates__Default__Path": "../../.tools/certs/localhost.pem",
-        "Kestrel__Certificates__Default__KeyPath": "../../.tools/certs/localhost.key"
+        "DevelopmentHttps__CertificatePath": "../../.tools/certs/localhost.pem",
+        "DevelopmentHttps__KeyPath": "../../.tools/certs/localhost.key"
       }
     }
   }

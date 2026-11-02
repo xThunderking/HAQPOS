@@ -23,9 +23,11 @@ Copia el repositorio al servidor. Fuera del repositorio, prepara la clave privad
 ```text
 /etc/haqpos/tls/fullchain.pem
 /etc/haqpos/tls/privkey.pem
+/etc/haqpos/data-protection/certificate.pem
+/etc/haqpos/data-protection/private.key
 ```
 
-Restringe los permisos de esos archivos y del .env. Distribuye confianza de la CA a los equipos clientes mediante el procedimiento de TI. No reutilices certificados de desarrollo.
+Restringe los permisos de esos archivos y del .env. El certificado RSA de Data Protection protege las claves de autenticación y debe permitir lectura al usuario de la API. Consulta [usuarios y seguridad](USERS_SECURITY.md). Distribuye confianza de la CA a los equipos clientes mediante el procedimiento de TI. No reutilices certificados de desarrollo.
 
 ## Configuración y arranque futuro
 
@@ -37,6 +39,10 @@ chmod 600 .env
 # Editar .env: contraseña, APP_HOST, certificados y parámetros internos.
 docker compose --env-file .env -f infrastructure/docker/compose.yaml config --quiet
 docker compose --env-file .env -f infrastructure/docker/compose.yaml build
+docker compose --env-file .env -f infrastructure/docker/compose.yaml up -d db
+docker compose --env-file .env -f infrastructure/docker/compose.yaml run --rm api --migrate
+# Solo en una instalación vacía; entrega la contraseña temporal de consola al administrador.
+docker compose --env-file .env -f infrastructure/docker/compose.yaml run --rm api --create-admin --employee NUMERO --name "NOMBRE COMPLETO"
 docker compose --env-file .env -f infrastructure/docker/compose.yaml up -d
 docker compose --env-file .env -f infrastructure/docker/compose.yaml ps
 ```
@@ -50,6 +56,7 @@ El API responde HTTP solo dentro de Docker; Nginx termina TLS y reemplaza los en
 ## Persistencia y salud
 
 - Volumen `postgres_data` montado en `/var/lib/postgresql`, conforme al esquema versionado de PostgreSQL 18.
+- Volumen `data_protection_keys` para las claves cifradas de sesión; respaldarlo junto con el certificado de protección según la política de TI.
 - `pg_isready` verifica la disponibilidad del servidor PostgreSQL.
 - La API usa `dotnet HAQPOS.Api.dll --health-probe` para consultar su endpoint local, sin instalar curl en el runtime.
 - Nginx tiene `/healthz` únicamente en el puerto HTTP no publicado; Compose espera que la API esté saludable.

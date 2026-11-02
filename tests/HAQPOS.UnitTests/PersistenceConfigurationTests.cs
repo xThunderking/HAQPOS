@@ -9,7 +9,7 @@ namespace HAQPOS.UnitTests;
 public sealed class PersistenceConfigurationTests
 {
     [Fact]
-    public void ContextUsesPostgreSqlAndContainsNoBusinessEntities()
+    public void ContextUsesPostgreSqlAndProtectsUniqueEmployeeNumbers()
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(
             new Dictionary<string, string?>
@@ -21,6 +21,9 @@ public sealed class PersistenceConfigurationTests
         var database = scope.ServiceProvider.GetRequiredService<HaqposDbContext>();
 
         Assert.Equal("Npgsql.EntityFrameworkCore.PostgreSQL", database.Database.ProviderName);
-        Assert.Empty(database.Model.GetEntityTypes());
+        var user = database.Model.FindEntityType(typeof(HAQPOS.Domain.Users.UserAccount))!;
+        Assert.Contains(user.GetIndexes(), index => index.IsUnique && index.Properties.Single().Name == "EmployeeNumber");
+        Assert.True(user.FindProperty("Version")!.IsConcurrencyToken);
+        Assert.Equal(3, database.Model.GetEntityTypes().Count());
     }
 }
