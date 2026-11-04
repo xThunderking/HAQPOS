@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using HAQPOS.Domain.Inventory;
 using HAQPOS.Domain.Users;
 using HAQPOS.Domain.Menu;
+using HAQPOS.Domain.Clients;
+using HAQPOS.Domain.Areas;
 
 namespace HAQPOS.Infrastructure.Persistence;
 
@@ -13,14 +15,17 @@ public sealed class HaqposDbContext(DbContextOptions<HaqposDbContext> options) :
     public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
     public DbSet<InventoryMovement> InventoryMovements => Set<InventoryMovement>();
     public DbSet<MenuProduct> MenuProducts => Set<MenuProduct>();
+    public DbSet<ClientRecord> Clients => Set<ClientRecord>();
+    public DbSet<AreaRecord> Areas => Set<AreaRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var users = modelBuilder.Entity<UserAccount>();
         users.ToTable("Users", t =>
         {
-            t.HasCheckConstraint("CK_Users_Role", "\"Role\" IN ('Administrador', 'Supervisor', 'Cajero')");
+            t.HasCheckConstraint("CK_Users_Role", "\"Role\" IN ('Administrador', 'Supervisor', 'Cajero', 'Consultor', 'Almacenista')");
             t.HasCheckConstraint("CK_Users_EmployeeNumber", "\"EmployeeNumber\" ~ '^[0-9]{1,20}$'");
+            t.HasCheckConstraint("CK_Users_AreaRole", "\"Role\" = 'Cajero' OR \"AreaId\" IS NULL");
         });
         users.HasKey(x => x.Id);
         users.Property(x => x.EmployeeNumber).HasMaxLength(20).IsRequired();
@@ -29,6 +34,8 @@ public sealed class HaqposDbContext(DbContextOptions<HaqposDbContext> options) :
         users.Property(x => x.Role).HasConversion<string>().HasMaxLength(20);
         users.Property(x => x.PasswordHash).HasMaxLength(512).IsRequired();
         users.Property(x => x.Version).IsConcurrencyToken();
+        users.HasIndex(x => x.AreaId);
+        users.HasOne(x => x.Area).WithMany().HasForeignKey(x => x.AreaId).OnDelete(DeleteBehavior.Restrict);
 
         var sessions = modelBuilder.Entity<UserSession>();
         sessions.HasKey(x => x.Id);
@@ -92,5 +99,31 @@ public sealed class HaqposDbContext(DbContextOptions<HaqposDbContext> options) :
         menuProducts.Property(x => x.Description).HasMaxLength(250);
         menuProducts.Property(x => x.Price).HasPrecision(12, 2);
         menuProducts.Property(x => x.Version).IsConcurrencyToken();
+
+        var clients = modelBuilder.Entity<ClientRecord>();
+        clients.ToTable("Clients", t =>
+        {
+            t.HasCheckConstraint("CK_Clients_RegistrationNumber", "\"RegistrationNumber\" ~ '^[A-Za-z0-9]{1,10}$'");
+            t.HasCheckConstraint("CK_Clients_Category", "\"Category\" IN ('NORMAL', 'CORTESIA', 'CONVENIO')");
+            t.HasCheckConstraint("CK_Clients_ConsultorioExternal", "(\"IsExternal\" AND \"Office\" IS NULL) OR (NOT \"IsExternal\" AND \"Office\" IS NOT NULL)");
+        });
+        clients.HasKey(x => x.Id);
+        clients.Property(x => x.RegistrationNumber).HasMaxLength(10).IsRequired();
+        clients.HasIndex(x => x.RegistrationNumber).IsUnique();
+        clients.Property(x => x.FullName).HasMaxLength(150).IsRequired();
+        clients.Property(x => x.Category).HasMaxLength(12).HasDefaultValue("NORMAL").IsRequired();
+        clients.Property(x => x.Office).HasMaxLength(80);
+        clients.Property(x => x.Version).IsConcurrencyToken();
+        clients.HasOne<UserAccount>().WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.Restrict);
+
+        var areas = modelBuilder.Entity<AreaRecord>();
+        areas.ToTable("Areas");
+        areas.HasKey(x => x.Id);
+        areas.Property(x => x.Name).HasMaxLength(100).IsRequired();
+        areas.Property(x => x.NormalizedName).HasMaxLength(100).IsRequired();
+        areas.HasIndex(x => x.NormalizedName).IsUnique();
+        areas.Property(x => x.Description).HasMaxLength(500).IsRequired();
+        areas.Property(x => x.Version).IsConcurrencyToken();
+        areas.HasOne<UserAccount>().WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.Restrict);
     }
 }

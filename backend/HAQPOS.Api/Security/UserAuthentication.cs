@@ -12,6 +12,9 @@ internal static class UserAuthentication
     public const string AdministratorPolicy = "Administrator";
     public const string InventoryPolicy = "InventoryStaff";
     public const string MenuPolicy = "MenuManagers";
+    public const string ClientPolicy = "ClientStaff";
+    public const string AreaPolicy = "AreaStaff";
+    public const string ModuleViewPolicy = "ModuleViewStaff";
     public const string ActivePasswordPolicy = "ActivePassword";
 
     public static ClaimsPrincipal Principal(UserAccount user, Guid sessionId) => new(new ClaimsIdentity(

@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 import { History, PackagePlus, Pencil, Plus, Power, Search, SlidersHorizontal } from "lucide-react";
 import { Modal, Notice, Pagination, SecurityNote } from "@/components/user-interface";
 import {
@@ -429,6 +430,8 @@ function MovementHistory({ item, onClose }: { item: InventoryItem; onClose: () =
 }
 
 export function InventoryPage() {
+  const { user } = useAuth();
+  const canManageInventory = user?.role === "Administrador" || user?.role === "Supervisor";
   const client = useQueryClient();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -467,15 +470,17 @@ export function InventoryPage() {
           <h1>Inventario</h1>
           <p>Consulta existencias y registra cada entrada, salida o ajuste.</p>
         </div>
-        <button
-          className="button button-primary"
-          onClick={() => {
-            setEditor({ item: null });
-            setMessage("");
-          }}
-        >
-          <Plus size={18} /> Nuevo insumo
-        </button>
+        {canManageInventory && (
+          <button
+            className="button button-primary"
+            onClick={() => {
+              setEditor({ item: null });
+              setMessage("");
+            }}
+          >
+            <Plus size={18} /> Nuevo insumo
+          </button>
+        )}
       </div>
       {message && <Notice success>{message}</Notice>}
       <section className="panel inventory-panel">
@@ -520,7 +525,7 @@ export function InventoryPage() {
                 ? "Prueba con otra clave, nombre o categoría."
                 : "Registra un insumo para comenzar a controlar sus existencias."}
             </p>
-            {!debouncedSearch && (
+            {!debouncedSearch && canManageInventory && (
               <button className="button button-primary" onClick={() => setEditor({ item: null })}>
                 <Plus size={17} /> Registrar primer insumo
               </button>
@@ -584,24 +589,28 @@ export function InventoryPage() {
                       </td>
                       <td>
                         <div className="row-actions">
-                          <button
-                            className="icon-button inventory-toggle-button"
-                            data-active={item.isActive}
-                            title={item.isActive ? "Desactivar insumo" : "Activar insumo"}
-                            aria-label={`${item.isActive ? "Desactivar" : "Activar"} ${item.name}`}
-                            onClick={() => setStatusItem(item)}
-                          >
-                            <Power size={17} />
-                          </button>
-                          <button
-                            className="icon-button"
-                            title="Registrar movimiento"
-                            aria-label={`Registrar movimiento para ${item.name}`}
-                            disabled={!item.isActive}
-                            onClick={() => setMovementItem(item)}
-                          >
-                            <PackagePlus size={17} />
-                          </button>
+                          {canManageInventory && (
+                            <>
+                              <button
+                                className="icon-button inventory-toggle-button"
+                                data-active={item.isActive}
+                                title={item.isActive ? "Desactivar insumo" : "Activar insumo"}
+                                aria-label={`${item.isActive ? "Desactivar" : "Activar"} ${item.name}`}
+                                onClick={() => setStatusItem(item)}
+                              >
+                                <Power size={17} />
+                              </button>
+                              <button
+                                className="icon-button"
+                                title="Registrar movimiento"
+                                aria-label={`Registrar movimiento para ${item.name}`}
+                                disabled={!item.isActive}
+                                onClick={() => setMovementItem(item)}
+                              >
+                                <PackagePlus size={17} />
+                              </button>
+                            </>
+                          )}
                           <button
                             className="icon-button"
                             title="Ver historial"
@@ -610,14 +619,16 @@ export function InventoryPage() {
                           >
                             <History size={17} />
                           </button>
-                          <button
-                            className="icon-button"
-                            title="Editar insumo"
-                            aria-label={`Editar ${item.name}`}
-                            onClick={() => setEditor({ item })}
-                          >
-                            <Pencil size={17} />
-                          </button>
+                          {canManageInventory && (
+                            <button
+                              className="icon-button"
+                              title="Editar insumo"
+                              aria-label={`Editar ${item.name}`}
+                              onClick={() => setEditor({ item })}
+                            >
+                              <Pencil size={17} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

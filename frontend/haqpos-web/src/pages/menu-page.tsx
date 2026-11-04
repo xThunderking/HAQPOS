@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 import { Coffee, Pencil, Plus, Power, Search, Utensils } from "lucide-react";
 import { Modal, Notice, Pagination, SecurityNote } from "@/components/user-interface";
 import { formatPrice, menuApi, menuErrorMessage, type MenuProduct } from "@/services/menu";
@@ -187,6 +188,8 @@ function ProductStatusDialog({
 }
 
 export function MenuPage() {
+  const { user } = useAuth();
+  const canManageMenu = user?.role === "Administrador" || user?.role === "Supervisor";
   const client = useQueryClient();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -221,15 +224,17 @@ export function MenuPage() {
           <h1>Menú</h1>
           <p>Administra alimentos y bebidas que no requieren control de existencias.</p>
         </div>
-        <button
-          className="button button-primary"
-          onClick={() => {
-            setEditor({ product: null });
-            setMessage("");
-          }}
-        >
-          <Plus size={18} /> Nuevo producto
-        </button>
+        {canManageMenu && (
+          <button
+            className="button button-primary"
+            onClick={() => {
+              setEditor({ product: null });
+              setMessage("");
+            }}
+          >
+            <Plus size={18} /> Nuevo producto
+          </button>
+        )}
       </div>
       {message && <Notice success>{message}</Notice>}
       <section className="panel menu-panel">
@@ -274,7 +279,7 @@ export function MenuPage() {
                 ? "Prueba con otra clave, nombre o categoría."
                 : "Agrega alimentos o bebidas para formar el catálogo de venta."}
             </p>
-            {!debouncedSearch && (
+            {!debouncedSearch && canManageMenu && (
               <button
                 className="button button-primary"
                 onClick={() => setEditor({ product: null })}
@@ -294,9 +299,11 @@ export function MenuPage() {
                     <th>Descripción</th>
                     <th>Precio de venta</th>
                     <th>Estado</th>
-                    <th>
-                      <span className="sr-only">Acciones</span>
-                    </th>
+                    {canManageMenu && (
+                      <th>
+                        <span className="sr-only">Acciones</span>
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -327,27 +334,29 @@ export function MenuPage() {
                           <span className="status status-neutral">Inactivo</span>
                         )}
                       </td>
-                      <td>
-                        <div className="row-actions">
-                          <button
-                            className="icon-button inventory-toggle-button"
-                            data-active={product.isActive}
-                            title={product.isActive ? "Desactivar producto" : "Activar producto"}
-                            aria-label={`${product.isActive ? "Desactivar" : "Activar"} ${product.name}`}
-                            onClick={() => setStatusProduct(product)}
-                          >
-                            <Power size={17} />
-                          </button>
-                          <button
-                            className="icon-button"
-                            title="Editar producto"
-                            aria-label={`Editar ${product.name}`}
-                            onClick={() => setEditor({ product })}
-                          >
-                            <Pencil size={17} />
-                          </button>
-                        </div>
-                      </td>
+                      {canManageMenu && (
+                        <td>
+                          <div className="row-actions">
+                            <button
+                              className="icon-button inventory-toggle-button"
+                              data-active={product.isActive}
+                              title={product.isActive ? "Desactivar producto" : "Activar producto"}
+                              aria-label={`${product.isActive ? "Desactivar" : "Activar"} ${product.name}`}
+                              onClick={() => setStatusProduct(product)}
+                            >
+                              <Power size={17} />
+                            </button>
+                            <button
+                              className="icon-button"
+                              title="Editar producto"
+                              aria-label={`Editar ${product.name}`}
+                              onClick={() => setEditor({ product })}
+                            >
+                              <Pencil size={17} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

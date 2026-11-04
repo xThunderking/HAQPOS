@@ -1,17 +1,27 @@
 import { getJson, sendJson } from "@/services/http-client";
 
-export type UserRole = "Administrador" | "Supervisor" | "Cajero";
-export const roles: UserRole[] = ["Administrador", "Supervisor", "Cajero"];
+export type UserRole = "Administrador" | "Supervisor" | "Cajero" | "Consultor" | "Almacenista";
+export const roles: UserRole[] = [
+  "Administrador",
+  "Supervisor",
+  "Cajero",
+  "Consultor",
+  "Almacenista",
+];
 export const roleDescriptions: Record<UserRole, string> = {
   Administrador: "Control total del sistema y de las cuentas de usuario.",
   Supervisor: "Acceso de supervisión. Sin administración de usuarios.",
   Cajero: "Acceso operativo de caja. Sin administración de usuarios.",
+  Consultor: "Consulta de los módulos del sistema.",
+  Almacenista: "Consulta de los módulos del sistema.",
 };
 export interface User {
   id: string;
   employeeNumber: string;
   fullName: string;
   role: UserRole;
+  areaId: string | null;
+  areaName: string | null;
   isActive: boolean;
   mustChangePassword: boolean;
   createdAt: string;
@@ -59,10 +69,22 @@ export const usersApi = {
     ),
   list: (search: string, page: number, signal?: AbortSignal) =>
     getJson<UserPage>(`users?${new URLSearchParams({ search, page: String(page) })}`, signal),
-  create: (employeeNumber: string, fullName: string, role: UserRole) =>
-    sendJson<TemporaryCredentials>("users", { employeeNumber, fullName, role }),
-  update: (user: User, fullName: string, role: UserRole, isActive: boolean) =>
-    sendJson<User>(`users/${user.id}`, { fullName, role, isActive, version: user.version }, "PUT"),
+  create: (employeeNumber: string, fullName: string, role: UserRole, areaId: string | null) =>
+    sendJson<TemporaryCredentials>("users", { employeeNumber, fullName, role, areaId }),
+  update: (
+    user: User,
+    fullName: string,
+    role: UserRole,
+    isActive: boolean,
+    areaId: string | null,
+  ) =>
+    sendJson<User>(
+      `users/${user.id}`,
+      { fullName, role, isActive, areaId, version: user.version },
+      "PUT",
+    ),
+  assignArea: (user: User, areaId: string) =>
+    sendJson<User>(`users/${user.id}/area`, { areaId, version: user.version }),
   unlock: (id: string) => sendJson<User>(`users/${id}/unlock`),
   reset: (id: string) => sendJson<TemporaryCredentials>(`users/${id}/reset-password`),
   audit: (page: number, signal?: AbortSignal) =>

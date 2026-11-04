@@ -6,6 +6,8 @@ using HAQPOS.Infrastructure.Security;
 using HAQPOS.Infrastructure.Users;
 using HAQPOS.Infrastructure.Inventory;
 using HAQPOS.Infrastructure.Menu;
+using HAQPOS.Infrastructure.Clients;
+using HAQPOS.Infrastructure.Areas;
 
 namespace HAQPOS.Infrastructure;
 
@@ -19,6 +21,8 @@ public static class DependencyInjection
         services.AddScoped<UserService>();
         services.AddScoped<InventoryService>();
         services.AddScoped<MenuService>();
+        services.AddScoped<ClientService>();
+        services.AddScoped<AreaService>();
         services.AddDbContext<HaqposDbContext>(options =>
         {
             var connectionString = configuration.GetConnectionString("Haqpos");

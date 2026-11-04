@@ -12,6 +12,8 @@ using HAQPOS.Api.Security;
 using HAQPOS.Api.Users;
 using HAQPOS.Api.Inventory;
 using HAQPOS.Api.Menu;
+using HAQPOS.Api.Clients;
+using HAQPOS.Api.Areas;
 using HAQPOS.Domain.Users;
 using HAQPOS.Infrastructure.Users;
 using HAQPOS.Infrastructure.Inventory;
@@ -86,7 +88,17 @@ builder.Services.AddAuthorizationBuilder()
             .RequireRole(UserRole.Administrador.ToString(), UserRole.Supervisor.ToString()))
     .AddPolicy(UserAuthentication.MenuPolicy, policy =>
         policy.RequireAuthenticatedUser().RequireClaim("password_changed", "true")
-            .RequireRole(UserRole.Administrador.ToString(), UserRole.Supervisor.ToString()));
+            .RequireRole(UserRole.Administrador.ToString(), UserRole.Supervisor.ToString()))
+    .AddPolicy(UserAuthentication.ModuleViewPolicy, policy =>
+        policy.RequireAuthenticatedUser().RequireClaim("password_changed", "true")
+            .RequireRole(UserRole.Administrador.ToString(), UserRole.Supervisor.ToString(), UserRole.Cajero.ToString(),
+                UserRole.Consultor.ToString(), UserRole.Almacenista.ToString()))
+    .AddPolicy(UserAuthentication.ClientPolicy, policy =>
+        policy.RequireAuthenticatedUser().RequireClaim("password_changed", "true")
+            .RequireRole(UserRole.Administrador.ToString(), UserRole.Supervisor.ToString(), UserRole.Cajero.ToString()))
+    .AddPolicy(UserAuthentication.AreaPolicy, policy =>
+        policy.RequireAuthenticatedUser().RequireClaim("password_changed", "true")
+            .RequireRole(UserRole.Administrador.ToString(), UserRole.Supervisor.ToString(), UserRole.Cajero.ToString()));
 builder.Services.AddAntiforgery(options =>
 {
     options.HeaderName = "X-CSRF-Token";
@@ -215,6 +227,8 @@ app.MapHealthChecks("/api/health", new Microsoft.AspNetCore.Diagnostics.HealthCh
 app.MapUserEndpoints();
 app.MapInventoryEndpoints();
 app.MapMenuEndpoints();
+app.MapClientEndpoints();
+app.MapAreaEndpoints();
 
 // An explicit local diagnostic: no schema changes and no automatic DB connection at startup.
 if (app.Environment.IsDevelopment())

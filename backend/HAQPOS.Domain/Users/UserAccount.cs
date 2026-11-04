@@ -1,6 +1,8 @@
+using HAQPOS.Domain.Areas;
+
 namespace HAQPOS.Domain.Users;
 
-public enum UserRole { Administrador, Supervisor, Cajero }
+public enum UserRole { Administrador, Supervisor, Cajero, Consultor, Almacenista }
 
 public sealed class UserAccount
 {
@@ -9,6 +11,8 @@ public sealed class UserAccount
     public string FullName { get; set; } = "";
     public UserRole Role { get; set; }
     public string PasswordHash { get; set; } = "";
+    public Guid? AreaId { get; set; }
+    public AreaRecord? Area { get; set; }
     public Guid SecurityStamp { get; set; } = Guid.NewGuid();
     public bool IsActive { get; set; } = true;
     public bool MustChangePassword { get; set; } = true;

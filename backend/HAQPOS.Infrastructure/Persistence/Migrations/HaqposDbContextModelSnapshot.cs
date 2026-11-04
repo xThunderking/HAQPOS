@@ -22,69 +22,278 @@ namespace HAQPOS.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("HAQPOS.Domain.Areas.AreaRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("NormalizedName")
+                        .IsUnique();
+
+                    b.ToTable("Areas", (string)null);
+                });
+
+            modelBuilder.Entity("HAQPOS.Domain.Clients.ClientRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasDefaultValue("NORMAL");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<bool>("IsExternal")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Office")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("RegistrationNumber")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("RegistrationNumber")
+                        .IsUnique();
+
+                    b.ToTable("Clients", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Clients_Category", "\"Category\" IN ('NORMAL', 'CORTESIA', 'CONVENIO')");
+
+                            t.HasCheckConstraint("CK_Clients_ConsultorioExternal", "(\"IsExternal\" AND \"Office\" IS NULL) OR (NOT \"IsExternal\" AND \"Office\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_Clients_RegistrationNumber", "\"RegistrationNumber\" ~ '^[A-Za-z0-9]{1,10}$'");
+                        });
+                });
+
             modelBuilder.Entity("HAQPOS.Domain.Inventory.InventoryItem", b =>
                 {
-                    b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uuid");
-                    b.Property<string>("Category").IsRequired().HasMaxLength(80).HasColumnType("character varying(80)");
-                    b.Property<string>("Code").IsRequired().HasMaxLength(30).HasColumnType("character varying(30)");
-                    b.Property<decimal>("CurrentStock").HasPrecision(18, 3).HasColumnType("numeric(18,3)");
-                    b.Property<DateTimeOffset>("CreatedAt").HasColumnType("timestamp with time zone");
-                    b.Property<bool>("IsActive").HasColumnType("boolean");
-                    b.Property<string>("Location").HasMaxLength(80).HasColumnType("character varying(80)");
-                    b.Property<decimal>("MinimumStock").HasPrecision(18, 3).HasColumnType("numeric(18,3)");
-                    b.Property<string>("Name").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
-                    b.Property<DateTimeOffset>("UpdatedAt").HasColumnType("timestamp with time zone");
-                    b.Property<decimal?>("UnitPrice").HasPrecision(12, 2).HasColumnType("numeric(12,2)");
-                    b.Property<string>("Unit").IsRequired().HasMaxLength(24).HasColumnType("character varying(24)");
-                    b.Property<Guid>("Version").IsConcurrencyToken().HasColumnType("uuid");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("CurrentStock")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<decimal>("MinimumStock")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<decimal?>("UnitPrice")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
-                    b.HasIndex("Code").IsUnique();
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
                     b.ToTable("InventoryItems", null, t =>
                         {
                             t.HasCheckConstraint("CK_InventoryItems_CurrentStock", "\"CurrentStock\" BETWEEN 0 AND 1000000000");
+
                             t.HasCheckConstraint("CK_InventoryItems_MinimumStock", "\"MinimumStock\" BETWEEN 0 AND 1000000000");
+
                             t.HasCheckConstraint("CK_InventoryItems_UnitPrice", "\"UnitPrice\" IS NULL OR (\"UnitPrice\" > 0 AND \"UnitPrice\" <= 999999.99)");
                         });
                 });
 
             modelBuilder.Entity("HAQPOS.Domain.Inventory.InventoryMovement", b =>
                 {
-                    b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uuid");
-                    b.Property<Guid>("ActorId").HasColumnType("uuid");
-                    b.Property<Guid>("ItemId").HasColumnType("uuid");
-                    b.Property<DateTimeOffset>("OccurredAt").HasColumnType("timestamp with time zone");
-                    b.Property<decimal>("Quantity").HasPrecision(18, 3).HasColumnType("numeric(18,3)");
-                    b.Property<string>("Reason").IsRequired().HasMaxLength(250).HasColumnType("character varying(250)");
-                    b.Property<decimal>("StockAfter").HasPrecision(18, 3).HasColumnType("numeric(18,3)");
-                    b.Property<decimal>("StockBefore").HasPrecision(18, 3).HasColumnType("numeric(18,3)");
-                    b.Property<string>("Type").IsRequired().HasMaxLength(12).HasColumnType("character varying(12)");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)");
+
+                    b.Property<decimal>("StockAfter")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<decimal>("StockBefore")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)");
+
                     b.HasKey("Id");
+
                     b.HasIndex("ActorId");
+
                     b.HasIndex("ItemId", "OccurredAt");
+
                     b.ToTable("InventoryMovements", null, t =>
                         {
                             t.HasCheckConstraint("CK_InventoryMovements_Quantity", "\"Quantity\" <> 0");
+
                             t.HasCheckConstraint("CK_InventoryMovements_QuantityLimit", "abs(\"Quantity\") <= 1000000000");
+
                             t.HasCheckConstraint("CK_InventoryMovements_StockAfter", "\"StockAfter\" BETWEEN 0 AND 1000000000");
+
                             t.HasCheckConstraint("CK_InventoryMovements_StockBefore", "\"StockBefore\" BETWEEN 0 AND 1000000000");
+
                             t.HasCheckConstraint("CK_InventoryMovements_Type", "\"Type\" IN ('Entrada', 'Salida', 'Ajuste')");
                         });
                 });
 
             modelBuilder.Entity("HAQPOS.Domain.Menu.MenuProduct", b =>
                 {
-                    b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uuid");
-                    b.Property<string>("Category").IsRequired().HasMaxLength(60).HasColumnType("character varying(60)");
-                    b.Property<string>("Code").IsRequired().HasMaxLength(30).HasColumnType("character varying(30)");
-                    b.Property<DateTimeOffset>("CreatedAt").HasColumnType("timestamp with time zone");
-                    b.Property<string>("Description").HasMaxLength(250).HasColumnType("character varying(250)");
-                    b.Property<bool>("IsActive").HasColumnType("boolean");
-                    b.Property<string>("Name").IsRequired().HasMaxLength(120).HasColumnType("character varying(120)");
-                    b.Property<decimal>("Price").HasPrecision(12, 2).HasColumnType("numeric(12,2)");
-                    b.Property<DateTimeOffset>("UpdatedAt").HasColumnType("timestamp with time zone");
-                    b.Property<Guid>("Version").IsConcurrencyToken().HasColumnType("uuid");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
-                    b.HasIndex("Code").IsUnique();
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
                     b.ToTable("MenuProducts", null, t =>
                         {
                             t.HasCheckConstraint("CK_MenuProducts_Price", "\"Price\" > 0 AND \"Price\" <= 999999.99");
@@ -128,6 +337,9 @@ namespace HAQPOS.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AreaId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -183,14 +395,18 @@ namespace HAQPOS.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AreaId");
+
                     b.HasIndex("EmployeeNumber")
                         .IsUnique();
 
                     b.ToTable("Users", null, t =>
                         {
+                            t.HasCheckConstraint("CK_Users_AreaRole", "\"Role\" = 'Cajero' OR \"AreaId\" IS NULL");
+
                             t.HasCheckConstraint("CK_Users_EmployeeNumber", "\"EmployeeNumber\" ~ '^[0-9]{1,20}$'");
 
-                            t.HasCheckConstraint("CK_Users_Role", "\"Role\" IN ('Administrador', 'Supervisor', 'Cajero')");
+                            t.HasCheckConstraint("CK_Users_Role", "\"Role\" IN ('Administrador', 'Supervisor', 'Cajero', 'Consultor', 'Almacenista')");
                         });
                 });
 
@@ -222,12 +438,47 @@ namespace HAQPOS.Infrastructure.Persistence.Migrations
                     b.ToTable("UserSessions");
                 });
 
+            modelBuilder.Entity("HAQPOS.Domain.Areas.AreaRecord", b =>
+                {
+                    b.HasOne("HAQPOS.Domain.Users.UserAccount", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HAQPOS.Domain.Clients.ClientRecord", b =>
+                {
+                    b.HasOne("HAQPOS.Domain.Users.UserAccount", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("HAQPOS.Domain.Inventory.InventoryMovement", b =>
                 {
                     b.HasOne("HAQPOS.Domain.Users.UserAccount", null)
-                        .WithMany().HasForeignKey("ActorId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("HAQPOS.Domain.Inventory.InventoryItem", null)
-                        .WithMany().HasForeignKey("ItemId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HAQPOS.Domain.Users.UserAccount", b =>
+                {
+                    b.HasOne("HAQPOS.Domain.Areas.AreaRecord", "Area")
+                        .WithMany()
+                        .HasForeignKey("AreaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Area");
                 });
 
             modelBuilder.Entity("HAQPOS.Domain.Users.UserSession", b =>

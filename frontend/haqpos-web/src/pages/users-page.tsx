@@ -4,6 +4,7 @@ import {
   Check,
   Copy,
   KeyRound,
+  MapPinned,
   Pencil,
   Plus,
   Search,
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Modal, Notice, Pagination, SecurityNote } from "@/components/user-interface";
+import { areasApi } from "@/services/areas";
 import {
   errorMessage,
   formatDate,
@@ -53,19 +55,33 @@ function UserEditor({
   const [employee, setEmployee] = useState(user?.employeeNumber ?? "");
   const [name, setName] = useState(user?.fullName ?? "");
   const [role, setRole] = useState<UserRole>(user?.role ?? "Cajero");
+  const [areaId, setAreaId] = useState(user?.areaId ?? "");
   const [active, setActive] = useState(user?.isActive ?? true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const ownAccount = user?.id === current?.id;
+  const areas = useQuery({
+    queryKey: ["area-options"],
+    queryFn: ({ signal }) => areasApi.options(signal),
+    enabled: role === "Cajero",
+  });
   async function submit(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
     setError("");
     try {
       if (user) {
-        await usersApi.update(user, name, role, active);
+        await usersApi.update(user, name, role, active, role === "Cajero" ? areaId || null : null);
         onUpdated();
-      } else onCreated(await usersApi.create(employee.trim(), name.trim(), role));
+      } else
+        onCreated(
+          await usersApi.create(
+            employee.trim(),
+            name.trim(),
+            role,
+            role === "Cajero" ? areaId || null : null,
+          ),
+        );
     } catch (failure) {
       setError(errorMessage(failure));
     } finally {
@@ -123,7 +139,11 @@ function UserEditor({
           <span>Rol de acceso</span>
           <select
             value={role}
-            onChange={(event) => setRole(event.target.value as UserRole)}
+            onChange={(event) => {
+              const selectedRole = event.target.value as UserRole;
+              setRole(selectedRole);
+              if (selectedRole !== "Cajero") setAreaId("");
+            }}
             disabled={busy || ownAccount}
           >
             {roles.map((value) => (
@@ -131,6 +151,31 @@ function UserEditor({
             ))}
           </select>
         </label>
+        {role === "Cajero" && (
+          <label className="field">
+            <span>Área</span>
+            <select
+              required
+              value={areaId}
+              disabled={busy || areas.isPending || areas.isError || areas.data?.length === 0}
+              onChange={(event) => setAreaId(event.target.value)}
+            >
+              <option value="">Selecciona un área</option>
+              {areas.data?.map((area) => (
+                <option key={area.id} value={area.id}>
+                  {area.name}
+                </option>
+              ))}
+            </select>
+            {areas.isPending && <small>Cargando áreas…</small>}
+            {areas.isError && (
+              <small>No fue posible cargar las áreas. Cierra y vuelve a abrir el formulario.</small>
+            )}
+            {areas.data?.length === 0 && (
+              <small>Primero registra un área en el módulo Áreas.</small>
+            )}
+          </label>
+        )}
         {user ? (
           <label className="switch-field">
             <input
@@ -341,6 +386,88 @@ function UnlockDialog({
   );
 }
 
+function AreaAssignmentDialog({
+  user,
+  onClose,
+  onSuccess,
+}: {
+  user: User;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [areaId, setAreaId] = useState(user.areaId ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const areas = useQuery({
+    queryKey: ["area-options"],
+    queryFn: ({ signal }) => areasApi.options(signal),
+  });
+
+  async function assign() {
+    if (!areaId) return;
+    setBusy(true);
+    setError("");
+    try {
+      await usersApi.assignArea(user, areaId);
+      onSuccess();
+    } catch (failure) {
+      setError(errorMessage(failure));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal
+      title="Asignar o mover de área"
+      description={`${user.fullName} · Área actual: ${user.areaName ?? "Sin área asignada"}`}
+      busy={busy}
+      onClose={onClose}
+    >
+      <div className="form-stack">
+        {error && <Notice>{error}</Notice>}
+        {areas.isError && <Notice>No fue posible cargar las áreas registradas.</Notice>}
+        <label className="field">
+          <span>Nueva área</span>
+          <select
+            required
+            value={areaId}
+            disabled={busy || areas.isPending || areas.isError || areas.data?.length === 0}
+            onChange={(event) => setAreaId(event.target.value)}
+          >
+            <option value="">Selecciona un área</option>
+            {areas.data?.map((area) => (
+              <option key={area.id} value={area.id}>
+                {area.name}
+              </option>
+            ))}
+          </select>
+          {areas.isPending && <small>Cargando áreas…</small>}
+          {areas.data?.length === 0 && <small>Primero registra un área en el módulo Áreas.</small>}
+        </label>
+        <div className="modal-actions">
+          <button
+            type="button"
+            className="button button-secondary"
+            disabled={busy}
+            onClick={onClose}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className="button button-primary"
+            disabled={busy || !areaId || areaId === user.areaId}
+            onClick={() => void assign()}
+          >
+            {busy ? "Guardando…" : "Guardar área"}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 export function UsersPage() {
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
@@ -348,6 +475,7 @@ export function UsersPage() {
     return () => window.clearInterval(timer);
   }, []);
   const { user: current, refresh } = useAuth();
+  const canManageUsers = current?.role === "Administrador";
   const client = useQueryClient();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -355,6 +483,7 @@ export function UsersPage() {
   const [editor, setEditor] = useState<{ user: User | null } | null>(null);
   const [resetUser, setResetUser] = useState<User | null>(null);
   const [unlockUser, setUnlockUser] = useState<User | null>(null);
+  const [areaUser, setAreaUser] = useState<User | null>(null);
   const [credentials, setCredentials] = useState<TemporaryCredentials | null>(null);
   const [message, setMessage] = useState("");
   useEffect(() => {
@@ -392,6 +521,11 @@ export function UsersPage() {
     setMessage("La cuenta fue desbloqueada correctamente.");
     void reload();
   }
+  function areaAssigned() {
+    setAreaUser(null);
+    setMessage("El área del cajero se actualizó correctamente.");
+    void reload();
+  }
   return (
     <div className="page-stack">
       <div className="page-heading">
@@ -400,15 +534,17 @@ export function UsersPage() {
           <h1>Control de usuarios</h1>
           <p>Gestiona a tu equipo y sus permisos de acceso al sistema.</p>
         </div>
-        <button
-          className="button button-primary"
-          onClick={() => {
-            setEditor({ user: null });
-            setMessage("");
-          }}
-        >
-          <Plus size={18} /> Registrar usuario
-        </button>
+        {canManageUsers && (
+          <button
+            className="button button-primary"
+            onClick={() => {
+              setEditor({ user: null });
+              setMessage("");
+            }}
+          >
+            <Plus size={18} /> Registrar usuario
+          </button>
+        )}
       </div>
       {message && <Notice success>{message}</Notice>}
       <section className="panel users-panel">
@@ -465,11 +601,14 @@ export function UsersPage() {
                   <tr>
                     <th>Usuario</th>
                     <th>Rol de acceso</th>
+                    <th>Área</th>
                     <th>Estado</th>
                     <th>Último ingreso</th>
-                    <th>
-                      <span className="sr-only">Acciones</span>
-                    </th>
+                    {canManageUsers && (
+                      <th>
+                        <span className="sr-only">Acciones</span>
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -493,50 +632,65 @@ export function UsersPage() {
                         </span>
                       </td>
                       <td>
+                        {person.role === "Cajero" ? (person.areaName ?? "Sin área asignada") : "—"}
+                      </td>
+                      <td>
                         <UserStatus user={person} now={now} />
                       </td>
                       <td className="date-cell">{formatDate(person.lastLoginAt)}</td>
-                      <td>
-                        <div className="row-actions">
-                          {person.id !== current?.id &&
-                            person.isActive &&
-                            person.lockedUntil !== null &&
-                            Date.parse(person.lockedUntil) > now && (
+                      {canManageUsers && (
+                        <td>
+                          <div className="row-actions">
+                            {person.role === "Cajero" && (
                               <button
                                 className="icon-button"
-                                title="Desbloquear cuenta"
-                                aria-label={`Desbloquear la cuenta de ${person.fullName}`}
-                                onClick={() => setUnlockUser(person)}
+                                title="Asignar o mover de área"
+                                aria-label={`Asignar o mover de área a ${person.fullName}`}
+                                onClick={() => setAreaUser(person)}
                               >
-                                <Unlock size={17} />
+                                <MapPinned size={17} />
                               </button>
                             )}
-                          <button
-                            className="icon-button"
-                            title="Editar usuario"
-                            aria-label={`Editar a ${person.fullName}`}
-                            onClick={() => {
-                              setEditor({ user: person });
-                              setMessage("");
-                            }}
-                          >
-                            <Pencil size={17} />
-                          </button>
-                          <button
-                            className="icon-button"
-                            title={
-                              person.id === current?.id
-                                ? "No puedes restablecer tu propia contraseña"
-                                : "Restablecer contraseña"
-                            }
-                            aria-label={`Restablecer contraseña de ${person.fullName}`}
-                            disabled={person.id === current?.id || !person.isActive}
-                            onClick={() => setResetUser(person)}
-                          >
-                            <KeyRound size={17} />
-                          </button>
-                        </div>
-                      </td>
+                            {person.id !== current?.id &&
+                              person.isActive &&
+                              person.lockedUntil !== null &&
+                              Date.parse(person.lockedUntil) > now && (
+                                <button
+                                  className="icon-button"
+                                  title="Desbloquear cuenta"
+                                  aria-label={`Desbloquear la cuenta de ${person.fullName}`}
+                                  onClick={() => setUnlockUser(person)}
+                                >
+                                  <Unlock size={17} />
+                                </button>
+                              )}
+                            <button
+                              className="icon-button"
+                              title="Editar usuario"
+                              aria-label={`Editar a ${person.fullName}`}
+                              onClick={() => {
+                                setEditor({ user: person });
+                                setMessage("");
+                              }}
+                            >
+                              <Pencil size={17} />
+                            </button>
+                            <button
+                              className="icon-button"
+                              title={
+                                person.id === current?.id
+                                  ? "No puedes restablecer tu propia contraseña"
+                                  : "Restablecer contraseña"
+                              }
+                              aria-label={`Restablecer contraseña de ${person.fullName}`}
+                              disabled={person.id === current?.id || !person.isActive}
+                              onClick={() => setResetUser(person)}
+                            >
+                              <KeyRound size={17} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -568,6 +722,13 @@ export function UsersPage() {
       )}
       {unlockUser && (
         <UnlockDialog user={unlockUser} onClose={() => setUnlockUser(null)} onSuccess={unlocked} />
+      )}
+      {areaUser && (
+        <AreaAssignmentDialog
+          user={areaUser}
+          onClose={() => setAreaUser(null)}
+          onSuccess={areaAssigned}
+        />
       )}
       {credentials && (
         <CredentialsDialog credentials={credentials} onClose={() => setCredentials(null)} />

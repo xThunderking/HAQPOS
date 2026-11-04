@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from "react-router";
 import {
   Activity,
   Boxes,
+  MapPinned,
   ChevronRight,
   Coffee,
   LogOut,
@@ -45,9 +46,11 @@ export function RootLayout() {
             ? "Menú"
             : location.pathname === "/cajas"
               ? "Cajas"
-              : location.pathname === "/clientes"
-                ? "Clientes"
-                : "HAQPOS";
+              : location.pathname === "/areas"
+                ? "Áreas"
+                : location.pathname === "/clientes"
+                  ? "Clientes"
+                  : "HAQPOS";
   return (
     <div className="app-shell">
       {menuOpen && (
@@ -73,30 +76,25 @@ export function RootLayout() {
           <NavLink to="/cajas" onClick={() => setMenuOpen(false)}>
             <Store size={19} /> Cajas
           </NavLink>
+          <NavLink to="/areas" onClick={() => setMenuOpen(false)}>
+            <MapPinned size={19} /> Áreas
+          </NavLink>
           <NavLink to="/clientes" onClick={() => setMenuOpen(false)}>
             <UserRound size={19} /> Clientes
           </NavLink>
-          {(user?.role === "Administrador" || user?.role === "Supervisor") && (
-            <>
-              <NavLink to="/inventario" onClick={() => setMenuOpen(false)}>
-                <Boxes size={19} /> Inventario
-              </NavLink>
-              <NavLink to="/menu" onClick={() => setMenuOpen(false)}>
-                <Coffee size={19} /> Menú
-              </NavLink>
-            </>
-          )}
-          {user?.role === "Administrador" && (
-            <>
-              <span className="nav-section-label">ADMINISTRACIÓN</span>
-              <NavLink to="/usuarios" onClick={() => setMenuOpen(false)}>
-                <Users size={19} /> Control de usuarios
-              </NavLink>
-              <NavLink to="/actividad" onClick={() => setMenuOpen(false)}>
-                <Activity size={19} /> Actividad de seguridad
-              </NavLink>
-            </>
-          )}
+          <NavLink to="/inventario" onClick={() => setMenuOpen(false)}>
+            <Boxes size={19} /> Inventario
+          </NavLink>
+          <NavLink to="/menu" onClick={() => setMenuOpen(false)}>
+            <Coffee size={19} /> Menú
+          </NavLink>
+          <span className="nav-section-label">ADMINISTRACIÓN</span>
+          <NavLink to="/usuarios" onClick={() => setMenuOpen(false)}>
+            <Users size={19} /> Control de usuarios
+          </NavLink>
+          <NavLink to="/actividad" onClick={() => setMenuOpen(false)}>
+            <Activity size={19} /> Actividad de seguridad
+          </NavLink>
         </nav>
         <div className="sidebar-bottom">
           <div className="sidebar-security">

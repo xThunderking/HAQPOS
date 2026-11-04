@@ -52,19 +52,25 @@ internal static class UserEndpoints
             return Results.Ok(new { user = UserView.From(user) });
         }).RequireAuthorization().RequireRateLimiting("credentials");
 
+        api.MapGet("/users", async (string? search, int? page, UserService users, CancellationToken ct) =>
+            Results.Ok(await users.ListAsync(search, page ?? 1, ct)))
+            .RequireAuthorization(UserAuthentication.ModuleViewPolicy);
+
         var management = api.MapGroup("/users").RequireAuthorization(UserAuthentication.AdministratorPolicy);
-        management.MapGet("/", async (string? search, int? page, UserService users, CancellationToken ct) =>
-            Results.Ok(await users.ListAsync(search, page ?? 1, ct)));
         management.MapPost("/", async (CreateUserRequest request, HttpContext context, UserService users, CancellationToken ct) =>
             Results.Ok(await users.CreateAsync(request, context.User.UserId(), context.Connection.RemoteIpAddress?.ToString(), ct)));
         management.MapPut("/{id:guid}", async (Guid id, UpdateUserRequest request, HttpContext context, UserService users, CancellationToken ct) =>
             Results.Ok(await users.UpdateAsync(id, request, context.User.UserId(), context.Connection.RemoteIpAddress?.ToString(), ct)));
+        management.MapPost("/{id:guid}/area", async (Guid id, AssignCashierAreaRequest request, HttpContext context,
+            UserService users, CancellationToken ct) =>
+            Results.Ok(await users.AssignCashierAreaAsync(id, request, context.User.UserId(),
+                context.Connection.RemoteIpAddress?.ToString(), ct)));
         management.MapPost("/{id:guid}/unlock", async (Guid id, HttpContext context, UserService users, CancellationToken ct) =>
             Results.Ok(await users.UnlockAsync(id, context.User.UserId(), context.Connection.RemoteIpAddress?.ToString(), ct)))
             .RequireRateLimiting("credentials");
         management.MapPost("/{id:guid}/reset-password", async (Guid id, HttpContext context, UserService users, CancellationToken ct) =>
             Results.Ok(await users.ResetPasswordAsync(id, context.User.UserId(), context.Connection.RemoteIpAddress?.ToString(), ct)));
         api.MapGet("/security/audit", async (int? page, UserService users, CancellationToken ct) =>
-            Results.Ok(await users.AuditAsync(page ?? 1, ct))).RequireAuthorization(UserAuthentication.AdministratorPolicy);
+            Results.Ok(await users.AuditAsync(page ?? 1, ct))).RequireAuthorization(UserAuthentication.ModuleViewPolicy);
     }
 }

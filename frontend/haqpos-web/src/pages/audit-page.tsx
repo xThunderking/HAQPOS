@@ -11,6 +11,8 @@ const labels: Record<string, string> = {
   "user.locked": "Cuenta bloqueada por intentos fallidos",
   "user.unlocked": "Cuenta desbloqueada por administrador",
   "user.updated": "Información o permisos actualizados",
+  "user.area_assigned": "Área asignada al cajero",
+  "user.area_changed": "Área del cajero cambiada",
   "password.reset": "Contraseña restablecida",
   "password.changed": "Contraseña personal actualizada",
   "password.change_failed": "Intento de cambio de contraseña rechazado",
@@ -28,6 +30,10 @@ const labels: Record<string, string> = {
   "menu.product_updated": "Producto de menú actualizado",
   "menu.product_activated": "Producto de menú activado",
   "menu.product_deactivated": "Producto de menú desactivado",
+  "client.created": "Cliente registrado",
+  "client.updated": "Datos del cliente actualizados",
+  "client.deleted": "Cliente eliminado",
+  "area.created": "Área registrada",
 };
 export function AuditPage() {
   const [page, setPage] = useState(1);

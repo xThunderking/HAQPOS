@@ -1,4 +1,5 @@
 using HAQPOS.Application.Users;
+using HAQPOS.Domain.Areas;
 using HAQPOS.Domain.Users;
 using HAQPOS.Infrastructure.Persistence;
 using HAQPOS.Infrastructure.Security;
@@ -80,7 +81,7 @@ public sealed class UserService(HaqposDbContext db, PasswordSecurity passwords, 
         var session = await db.UserSessions.AsNoTracking().SingleOrDefaultAsync(x => x.Id == sessionId && x.UserId == userId, ct);
         if (session is null || session.RevokedAt is not null || session.ExpiresAt <= now ||
             session.LastSeenAt <= now.Subtract(UserRules.IdleTimeout)) return null;
-        var user = await db.Users.AsNoTracking().SingleOrDefaultAsync(x => x.Id == userId, ct);
+        var user = await db.Users.AsNoTracking().Include(x => x.Area).SingleOrDefaultAsync(x => x.Id == userId, ct);
         if (user is null || !user.IsActive || user.SecurityStamp != stamp ||
             (user.MustChangePassword && (user.TemporaryPasswordExpiresAt is null || user.TemporaryPasswordExpiresAt <= now))) return null;
         if (session.LastSeenAt < now.AddMinutes(-1))
@@ -90,7 +91,7 @@ public sealed class UserService(HaqposDbContext db, PasswordSecurity passwords, 
     }
 
     public async Task<UserAccount?> FindAsync(Guid id, CancellationToken ct) =>
-        await db.Users.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct);
+        await db.Users.AsNoTracking().Include(x => x.Area).SingleOrDefaultAsync(x => x.Id == id, ct);
 
     public async Task LogoutAsync(Guid userId, Guid sessionId, string? ip, CancellationToken ct)
     {
@@ -170,7 +171,7 @@ public sealed class UserService(HaqposDbContext db, PasswordSecurity passwords, 
         }
         var count = await query.CountAsync(ct);
         page = Math.Min(page, Math.Max(1, (count + pageSize - 1) / pageSize));
-        var users = await query.OrderBy(x => x.FullName).ThenBy(x => x.EmployeeNumber)
+        var users = await query.Include(x => x.Area).OrderBy(x => x.FullName).ThenBy(x => x.EmployeeNumber)
             .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
         return new(users.Select(UserView.From).ToList(), count, page, pageSize);
     }
@@ -185,7 +186,8 @@ public sealed class UserService(HaqposDbContext db, PasswordSecurity passwords, 
         await RequireAdministratorAsync(actorId, ct);
         if (await db.Users.AnyAsync(x => x.EmployeeNumber == number, ct))
             throw new UserOperationException("Ya existe un usuario con ese número de empleado.", UserError.Conflict);
-        var credentials = CreateUser(number, name, request.Role);
+        var area = await ResolveAreaAsync(request.Role, request.AreaId, ct);
+        var credentials = CreateUser(number, name, request.Role, area);
         Audit("user.created", actorId, credentials.User.Id, ip);
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
@@ -200,7 +202,7 @@ public sealed class UserService(HaqposDbContext db, PasswordSecurity passwords, 
         await ManagementLockAsync(ct);
         if (await db.Users.AnyAsync(ct))
             throw new UserOperationException("La instalación ya tiene usuarios. El alta inicial está cerrada.", UserError.Conflict);
-        var credentials = CreateUser(number, name, UserRole.Administrador);
+        var credentials = CreateUser(number, name, UserRole.Administrador, null);
         Audit("installation.admin_created", null, credentials.User.Id, null);
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
@@ -222,6 +224,7 @@ public sealed class UserService(HaqposDbContext db, PasswordSecurity passwords, 
         if (user.IsActive && user.Role == UserRole.Administrador && (!request.IsActive || request.Role != UserRole.Administrador) &&
             await db.Users.CountAsync(x => x.IsActive && x.Role == UserRole.Administrador, ct) <= 1)
             throw new UserOperationException("Debe permanecer al menos un administrador activo.");
+        var area = await ResolveAreaAsync(request.Role, request.AreaId, ct);
         if (user.Role != request.Role || user.IsActive != request.IsActive)
         {
             user.SecurityStamp = Guid.NewGuid();
@@ -229,9 +232,44 @@ public sealed class UserService(HaqposDbContext db, PasswordSecurity passwords, 
         }
         user.FullName = name;
         user.Role = request.Role;
+        user.AreaId = area?.Id;
+        user.Area = area;
         user.IsActive = request.IsActive;
         user.Version = Guid.NewGuid();
         Audit("user.updated", actorId, id, ip);
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+        return UserView.From(user);
+    }
+
+    public async Task<UserView> AssignCashierAreaAsync(Guid id, AssignCashierAreaRequest request, Guid actorId,
+        string? ip, CancellationToken ct)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        await ManagementLockAsync(ct);
+        await RequireAdministratorAsync(actorId, ct);
+        var user = await LockedUserAsync(id, ct);
+        if (request.Version != user.Version)
+            throw new UserOperationException("La cuenta cambió. Actualiza la lista antes de cambiar su área.", UserError.Conflict);
+        if (user.Role != UserRole.Cajero)
+            throw new UserOperationException("Solo se puede asignar un área a usuarios con rol Cajero.");
+
+        var area = await db.Areas.SingleOrDefaultAsync(x => x.Id == request.AreaId, ct)
+            ?? throw new UserOperationException("El área seleccionada ya no está disponible.", UserError.Conflict);
+        if (user.AreaId == area.Id)
+        {
+            user.Area = area;
+            await transaction.CommitAsync(ct);
+            return UserView.From(user);
+        }
+
+        var action = user.AreaId is null ? "user.area_assigned" : "user.area_changed";
+        user.AreaId = area.Id;
+        user.Area = area;
+        user.SecurityStamp = Guid.NewGuid();
+        user.Version = Guid.NewGuid();
+        await RevokeSessionsAsync(user.Id, ct);
+        Audit(action, actorId, user.Id, ip);
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
         return UserView.From(user);
@@ -312,10 +350,18 @@ public sealed class UserService(HaqposDbContext db, PasswordSecurity passwords, 
         return new(await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct), total, page, pageSize);
     }
 
-    private TemporaryCredentials CreateUser(string number, string name, UserRole role)
+    private TemporaryCredentials CreateUser(string number, string name, UserRole role, AreaRecord? area)
     {
         var temporary = UserRules.GenerateTemporaryPassword();
-        var user = new UserAccount { EmployeeNumber = number, FullName = name, Role = role, CreatedAt = Now };
+        var user = new UserAccount
+        {
+            EmployeeNumber = number,
+            FullName = name,
+            Role = role,
+            AreaId = area?.Id,
+            Area = area,
+            CreatedAt = Now
+        };
         SetTemporaryPassword(user, temporary);
         db.Users.Add(user);
         return new(UserView.From(user), temporary, user.TemporaryPasswordExpiresAt!.Value);
@@ -346,6 +392,21 @@ public sealed class UserService(HaqposDbContext db, PasswordSecurity passwords, 
     private async Task<UserAccount> LockedUserAsync(Guid id, CancellationToken ct) =>
         await db.Users.FromSqlInterpolated($"SELECT * FROM \"Users\" WHERE \"Id\" = {id} FOR UPDATE")
             .SingleOrDefaultAsync(ct) ?? throw new UserOperationException("El usuario no existe.", UserError.NotFound);
+
+    private async Task<AreaRecord?> ResolveAreaAsync(UserRole role, Guid? areaId, CancellationToken ct)
+    {
+        if (role != UserRole.Cajero)
+        {
+            if (areaId is not null)
+                throw new UserOperationException("Solo los cajeros pueden tener un área asignada.");
+            return null;
+        }
+
+        if (areaId is null)
+            throw new UserOperationException("Selecciona un área para el cajero.");
+        return await db.Areas.SingleOrDefaultAsync(area => area.Id == areaId.Value, ct)
+            ?? throw new UserOperationException("El área seleccionada ya no está disponible.", UserError.Conflict);
+    }
 
     private async Task RequireAdministratorAsync(Guid id, CancellationToken ct)
     {

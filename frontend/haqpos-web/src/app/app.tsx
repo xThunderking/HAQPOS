@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { queryClient } from "@/app/query-client";
 import { RootLayout } from "@/layouts/root-layout";
 import { CajasPage } from "@/pages/cajas-page";
+import { AreasPage } from "@/pages/areas-page";
 import { ClientesPage } from "@/pages/clientes-page";
 import { AuthProvider } from "@/app/auth";
 import { useAuth } from "@/hooks/use-auth";
@@ -58,19 +59,12 @@ function ApplicationRoutes() {
     <Routes>
       <Route element={<RootLayout />}>
         <Route path="/cajas" element={<CajasPage />} />
+        <Route path="/areas" element={<AreasPage />} />
         <Route path="/clientes" element={<ClientesPage />} />
-        {(user.role === "Administrador" || user.role === "Supervisor") && (
-          <>
-            <Route path="/inventario" element={<InventoryPage />} />
-            <Route path="/menu" element={<MenuPage />} />
-          </>
-        )}
-        {user.role === "Administrador" && (
-          <>
-            <Route path="/usuarios" element={<UsersPage />} />
-            <Route path="/actividad" element={<AuditPage />} />
-          </>
-        )}
+        <Route path="/inventario" element={<InventoryPage />} />
+        <Route path="/menu" element={<MenuPage />} />
+        <Route path="/usuarios" element={<UsersPage />} />
+        <Route path="/actividad" element={<AuditPage />} />
         <Route
           path="*"
           element={
