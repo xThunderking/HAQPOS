@@ -4,14 +4,12 @@ using HAQPOS.Domain.Menu;
 namespace HAQPOS.Application.Menu;
 
 public sealed record CreateMenuProductRequest(
-    [property: JsonRequired] string Code,
     [property: JsonRequired] string Name,
     [property: JsonRequired] string Category,
     [property: JsonRequired] string? Description,
     [property: JsonRequired] decimal Price);
 
 public sealed record UpdateMenuProductRequest(
-    [property: JsonRequired] string Code,
     [property: JsonRequired] string Name,
     [property: JsonRequired] string Category,
     [property: JsonRequired] string? Description,
@@ -22,11 +20,15 @@ public sealed record SetMenuProductStatusRequest(
     [property: JsonRequired] bool IsActive,
     [property: JsonRequired] Guid Version);
 
-public sealed record MenuProductView(Guid Id, string Code, string Name, string Category,
+public sealed record AssignMenuProductAreaRequest(
+    [property: JsonRequired] Guid AreaId,
+    [property: JsonRequired] Guid Version);
+
+public sealed record MenuProductView(Guid Id, Guid? AreaId, string Code, string Name, string Category,
     string? Description, decimal Price, bool IsActive, DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt, Guid Version)
 {
-    public static MenuProductView From(MenuProduct product) => new(product.Id, product.Code,
+    public static MenuProductView From(MenuProduct product) => new(product.Id, product.AreaId, product.Code,
         product.Name, product.Category, product.Description, product.Price, product.IsActive,
         product.CreatedAt, product.UpdatedAt, product.Version);
 }

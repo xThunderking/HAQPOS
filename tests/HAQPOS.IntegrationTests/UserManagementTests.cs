@@ -4,6 +4,11 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using HAQPOS.Application.Users;
+using HAQPOS.Application.Areas;
+using HAQPOS.Application.Inventory;
+using HAQPOS.Application.Menu;
+using HAQPOS.Domain.Menu;
+using HAQPOS.Domain.Inventory;
 using HAQPOS.Domain.Users;
 using HAQPOS.Infrastructure.Persistence;
 using HAQPOS.Infrastructure.Users;
@@ -106,7 +111,7 @@ public sealed class UserManagementTests : IAsyncLifetime
             Assert.Equal(HttpStatusCode.Forbidden, (await employee.GetAsync("/api/users")).StatusCode);
             Assert.Equal(HttpStatusCode.Forbidden, (await employee.GetAsync("/api/security/audit")).StatusCode);
             Assert.Equal(HttpStatusCode.Forbidden, (await Send(employee, "/api/users",
-                new CreateUserRequest("9999", "Acceso indebido", UserRole.Administrador))).StatusCode);
+                new CreateUserRequest("9999", "Acceso indebido", UserRole.Administrador, null))).StatusCode);
             Assert.Equal(HttpStatusCode.Forbidden, (await Send(employee, $"/api/users/{credentials.User.Id}/reset-password")).StatusCode);
         }
     }
@@ -123,7 +128,7 @@ public sealed class UserManagementTests : IAsyncLifetime
         Assert.Contains("secure", cookie, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("httponly", cookie, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("samesite=strict", cookie, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(HttpStatusCode.BadRequest, (await anonymous.PostAsJsonAsync("/api/users", new CreateUserRequest("9000", "Sin token", UserRole.Cajero))).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await anonymous.PostAsJsonAsync("/api/users", new CreateUserRequest("9000", "Sin token", UserRole.Cajero, null))).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await Send(anonymous, "/api/auth/logout")).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/users")).StatusCode);
     }
@@ -187,11 +192,11 @@ public sealed class UserManagementTests : IAsyncLifetime
     {
         using var admin = NewClient();
         var me = await Login(admin, AdminEmployee, AdminPassword);
-        await Create(admin, "00100", UserRole.Cajero);
+        var existing = await Create(admin, "00100", UserRole.Cajero);
         Assert.Equal(HttpStatusCode.Conflict, (await Send(admin, "/api/users",
-            new CreateUserRequest(" 00100 ", "Usuario duplicado", UserRole.Cajero))).StatusCode);
+            new CreateUserRequest(" 00100 ", "Usuario duplicado", UserRole.Cajero, existing.User.AreaId))).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await Send(admin, $"/api/users/{me.Id}",
-            new UpdateUserRequest(me.FullName, UserRole.Cajero, false, me.Version), HttpMethod.Put)).StatusCode);
+            new UpdateUserRequest(me.FullName, UserRole.Cajero, false, null, me.Version), HttpMethod.Put)).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await Send(admin, $"/api/users/{me.Id}/reset-password")).StatusCode);
         var list = await admin.GetStringAsync("/api/users");
         Assert.DoesNotContain("passwordHash", list, StringComparison.OrdinalIgnoreCase);
@@ -210,9 +215,9 @@ public sealed class UserManagementTests : IAsyncLifetime
         var page = await admin.GetFromJsonAsync<UserPage>("/api/users", JsonOptions);
         var user = page!.Items.Single(x => x.Id == created.User.Id);
         Assert.Equal(HttpStatusCode.Conflict, (await Send(admin, $"/api/users/{user.Id}",
-            new UpdateUserRequest(user.FullName, user.Role, false, created.User.Version), HttpMethod.Put)).StatusCode);
+            new UpdateUserRequest(user.FullName, user.Role, false, user.AreaId, created.User.Version), HttpMethod.Put)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await Send(admin, $"/api/users/{user.Id}",
-            new UpdateUserRequest(user.FullName, user.Role, false, user.Version), HttpMethod.Put)).StatusCode);
+            new UpdateUserRequest(user.FullName, user.Role, false, user.AreaId, user.Version), HttpMethod.Put)).StatusCode);
         var me = await employee.GetFromJsonAsync<SessionResponse>("/api/auth/me", JsonOptions);
         Assert.Null(me!.User);
         Assert.Equal(HttpStatusCode.Unauthorized, (await Send(employee, "/api/auth/login",
@@ -238,6 +243,101 @@ public sealed class UserManagementTests : IAsyncLifetime
         request.Headers.Add("X-CSRF-Token", csrf!.Token);
         if (body is not null) request.Content = JsonContent.Create(body, options: JsonOptions);
         return await client.SendAsync(request);
+    }
+
+    [PostgresFact]
+    public async Task MenuProductsAreIsolatedByAreaAndLegacyProductsCanBeAssigned()
+    {
+        using var admin = NewClient();
+        await Login(admin, AdminEmployee, AdminPassword);
+        var firstResponse = await Send(admin, "/api/areas/", new CreateAreaRequest("Cafetería", "Área de cafetería"));
+        var secondResponse = await Send(admin, "/api/areas/", new CreateAreaRequest("Club Médico", "Área del club"));
+        Assert.Equal(HttpStatusCode.OK, firstResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, secondResponse.StatusCode);
+        var first = (await firstResponse.Content.ReadFromJsonAsync<AreaView>(JsonOptions))!;
+        var second = (await secondResponse.Content.ReadFromJsonAsync<AreaView>(JsonOptions))!;
+
+        var createdResponse = await Send(admin, $"/api/menu/areas/{first.Id}/products",
+            new CreateMenuProductRequest("Comida del día", "Comida", null, 55m));
+        Assert.Equal(HttpStatusCode.OK, createdResponse.StatusCode);
+        var product = (await createdResponse.Content.ReadFromJsonAsync<MenuProductView>(JsonOptions))!;
+        Assert.Equal(first.Id, product.AreaId);
+        var firstMenu = await admin.GetFromJsonAsync<MenuProductPage>($"/api/menu/areas/{first.Id}/products", JsonOptions);
+        var secondMenu = await admin.GetFromJsonAsync<MenuProductPage>($"/api/menu/areas/{second.Id}/products", JsonOptions);
+        Assert.Contains(firstMenu!.Items, item => item.Id == product.Id);
+        Assert.Empty(secondMenu!.Items);
+
+        var wrongAreaEdit = await Send(admin, $"/api/menu/areas/{second.Id}/products/{product.Id}",
+            new UpdateMenuProductRequest("Otro nombre", "Comida", null, 60m, product.Version), HttpMethod.Put);
+        Assert.Equal(HttpStatusCode.NotFound, wrongAreaEdit.StatusCode);
+        var wrongAreaStatus = await Send(admin, $"/api/menu/areas/{second.Id}/products/{product.Id}/status",
+            new SetMenuProductStatusRequest(false, product.Version));
+        Assert.Equal(HttpStatusCode.NotFound, wrongAreaStatus.StatusCode);
+        var missingArea = await Send(admin, $"/api/menu/areas/{Guid.NewGuid()}/products",
+            new CreateMenuProductRequest("Sin área", "Comida", null, 10m));
+        Assert.Equal(HttpStatusCode.NotFound, missingArea.StatusCode);
+        var duplicateBarcode = await Send(admin, $"/api/inventory/areas/{second.Id}/items",
+            new CreateInventoryItemRequest(product.Code, "Insumo", "Pieza", 0m, 10m, 0m));
+        Assert.Equal(HttpStatusCode.Conflict, duplicateBarcode.StatusCode);
+
+        MenuProduct legacy;
+        await using (var scope = factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<HaqposDbContext>();
+            legacy = new MenuProduct { Code = "LEGACY-MENU-TEST", Name = "Producto anterior", Category = "Comida", Price = 20m,
+                CreatedAt = clock.GetUtcNow(), UpdatedAt = clock.GetUtcNow() };
+            db.MenuProducts.Add(legacy);
+            await db.SaveChangesAsync();
+        }
+        var pending = await admin.GetFromJsonAsync<MenuProductPage>("/api/menu/unassigned", JsonOptions);
+        Assert.Contains(pending!.Items, item => item.Id == legacy.Id);
+        var assigned = await Send(admin, $"/api/menu/unassigned/{legacy.Id}/area",
+            new AssignMenuProductAreaRequest(second.Id, legacy.Version));
+        Assert.Equal(HttpStatusCode.OK, assigned.StatusCode);
+        var assignedProduct = (await assigned.Content.ReadFromJsonAsync<MenuProductView>(JsonOptions))!;
+        Assert.Equal(second.Id, assignedProduct.AreaId);
+        secondMenu = await admin.GetFromJsonAsync<MenuProductPage>($"/api/menu/areas/{second.Id}/products", JsonOptions);
+        Assert.Contains(secondMenu!.Items, item => item.Id == legacy.Id);
+        Assert.Equal(HttpStatusCode.Conflict, (await Send(admin, $"/api/menu/unassigned/{legacy.Id}/area",
+            new AssignMenuProductAreaRequest(first.Id, assignedProduct.Version))).StatusCode);
+
+        var cashierCredentials = await Create(admin, "88001", UserRole.Cajero);
+        using var cashier = NewClient();
+        await Login(cashier, cashierCredentials.User.EmployeeNumber, cashierCredentials.TemporaryPassword);
+        var changed = await Send(cashier, "/api/auth/change-password",
+            new ChangePasswordRequest(cashierCredentials.TemporaryPassword, PersonalPassword, PersonalPassword));
+        Assert.Equal(HttpStatusCode.OK, changed.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await cashier.GetAsync($"/api/menu/areas/{first.Id}/products")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await Send(cashier, $"/api/menu/areas/{first.Id}/products",
+            new CreateMenuProductRequest("No autorizado", "Comida", null, 10m))).StatusCode);
+    }
+
+    [PostgresFact]
+    public async Task InventoryAreasRejectCrossAreaMovementsAndNegativeStock()
+    {
+        using var admin = NewClient();
+        await Login(admin, AdminEmployee, AdminPassword);
+        var firstResponse = await Send(admin, "/api/areas/", new CreateAreaRequest("Cafetería", "Área de cafetería"));
+        var secondResponse = await Send(admin, "/api/areas/", new CreateAreaRequest("Club Médico", "Área del club"));
+        var first = (await firstResponse.Content.ReadFromJsonAsync<AreaView>(JsonOptions))!;
+        var second = (await secondResponse.Content.ReadFromJsonAsync<AreaView>(JsonOptions))!;
+        var created = await Send(admin, $"/api/inventory/areas/{first.Id}/items",
+            new CreateInventoryItemRequest("", "Agua", "Pieza", 1m, 10m, 5m, null, true));
+        Assert.Equal(HttpStatusCode.OK, created.StatusCode);
+        var item = (await created.Content.ReadFromJsonAsync<InventoryItemView>(JsonOptions))!;
+        Assert.Matches("^[0-9]{9}$", item.Code);
+        var otherInventory = await admin.GetFromJsonAsync<InventoryPage>($"/api/inventory/areas/{second.Id}/items", JsonOptions);
+        Assert.Empty(otherInventory!.Items);
+        var wrongArea = await Send(admin, $"/api/inventory/areas/{second.Id}/items/{item.Id}/movements",
+            new InventoryMovementRequest(InventoryMovementType.Salida, 1m, "Salida de prueba"));
+        Assert.Equal(HttpStatusCode.NotFound, wrongArea.StatusCode);
+        var overdraw = await Send(admin, $"/api/inventory/areas/{first.Id}/items/{item.Id}/movements",
+            new InventoryMovementRequest(InventoryMovementType.Salida, 6m, "Salida de prueba"));
+        Assert.Equal(HttpStatusCode.BadRequest, overdraw.StatusCode);
+        var movement = await Send(admin, $"/api/inventory/areas/{first.Id}/items/{item.Id}/movements",
+            new InventoryMovementRequest(InventoryMovementType.Salida, 2m, "Salida de prueba"));
+        Assert.Equal(HttpStatusCode.OK, movement.StatusCode);
+        Assert.Equal(3m, (await movement.Content.ReadFromJsonAsync<InventoryItemView>(JsonOptions))!.CurrentStock);
     }
 
     [PostgresFact]
@@ -296,7 +396,14 @@ public sealed class UserManagementTests : IAsyncLifetime
     }
     private static async Task<TemporaryCredentials> Create(HttpClient client, string number, UserRole role)
     {
-        var response = await Send(client, "/api/users", new CreateUserRequest(number, "Persona de pruebas", role));
+        Guid? areaId = null;
+        if (role == UserRole.Cajero)
+        {
+            var areaResponse = await Send(client, "/api/areas/", new CreateAreaRequest($"Área {number}", "Área para pruebas"));
+            Assert.Equal(HttpStatusCode.OK, areaResponse.StatusCode);
+            areaId = (await areaResponse.Content.ReadFromJsonAsync<AreaView>(JsonOptions))!.Id;
+        }
+        var response = await Send(client, "/api/users", new CreateUserRequest(number, "Persona de pruebas", role, areaId));
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return (await response.Content.ReadFromJsonAsync<TemporaryCredentials>(JsonOptions))!;
     }

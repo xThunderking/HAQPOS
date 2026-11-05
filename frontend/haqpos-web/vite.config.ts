@@ -34,6 +34,11 @@ export default defineConfig(({ mode }) => {
             certificate && apiProxyTarget.startsWith("https:")
               ? new Agent({ ca: certificate.cert })
               : undefined,
+          configure: (proxy) => {
+            proxy.on("proxyReq", (proxyRequest) => {
+              proxyRequest.setHeader("X-Forwarded-Proto", certificate ? "https" : "http");
+            });
+          },
         },
       },
     },

@@ -4,11 +4,11 @@ export type InventoryMovementType = "Entrada" | "Salida" | "Ajuste";
 
 export interface InventoryItem {
   id: string;
+  areaId: string;
   code: string;
   name: string;
-  category: string;
+  presentation: string | null;
   unit: string;
-  location: string | null;
   currentStock: number;
   minimumStock: number;
   unitPrice: number | null;
@@ -35,6 +35,8 @@ export interface InventoryMovement {
   occurredAt: string;
   actorEmployeeNumber: string;
   actorFullName: string;
+  inputQuantity: number | null;
+  inputUnit: string | null;
 }
 
 export interface InventoryMovementPage {
@@ -45,47 +47,69 @@ export interface InventoryMovementPage {
 }
 
 export const inventoryApi = {
-  list: (search: string, page: number, signal?: AbortSignal) =>
+  list: (areaId: string, search: string, page: number, signal?: AbortSignal) =>
     getJson<InventoryPageResult>(
-      `inventory/items?${new URLSearchParams({ search, page: String(page) })}`,
+      `inventory/areas/${areaId}/items?${new URLSearchParams({ search, page: String(page) })}`,
       signal,
     ),
-  create: (input: {
-    code: string;
-    name: string;
-    category: string;
-    unit: string;
-    location: string | null;
-    minimumStock: number;
-    unitPrice: number;
-    initialStock: number;
-  }) => sendJson<InventoryItem>("inventory/items", input),
+  findByBarcode: (areaId: string, barcode: string, signal?: AbortSignal) =>
+    getJson<InventoryItem>(
+      `inventory/areas/${areaId}/items/barcode?${new URLSearchParams({ barcode })}`,
+      signal,
+    ),
+  create: (
+    areaId: string,
+    input: {
+      code: string;
+      name: string;
+      presentation: string | null;
+      unit: string;
+      minimumStock: number;
+      unitPrice: number;
+      initialStock: number;
+      generateBarcode: boolean;
+    },
+  ) => sendJson<InventoryItem>(`inventory/areas/${areaId}/items`, input),
   update: (
+    areaId: string,
     item: InventoryItem,
     input: {
       code: string;
       name: string;
-      category: string;
-      unit: string;
-      location: string | null;
+      presentation: string | null;
       minimumStock: number;
       unitPrice: number;
     },
   ) =>
     sendJson<InventoryItem>(
-      `inventory/items/${item.id}`,
+      `inventory/areas/${areaId}/items/${item.id}`,
       { ...input, version: item.version },
       "PUT",
     ),
-  setActive: (item: InventoryItem, isActive: boolean) =>
-    sendJson<InventoryItem>(`inventory/items/${item.id}/status`, {
+  setActive: (areaId: string, item: InventoryItem, isActive: boolean) =>
+    sendJson<InventoryItem>(`inventory/areas/${areaId}/items/${item.id}/status`, {
       isActive,
       version: item.version,
     }),
-  move: (item: InventoryItem, type: InventoryMovementType, quantity: number, reason: string) =>
-    sendJson<InventoryItem>(`inventory/items/${item.id}/movements`, { type, quantity, reason }),
-  movements: (item: InventoryItem, page: number, signal?: AbortSignal) =>
-    getJson<InventoryMovementPage>(`inventory/items/${item.id}/movements?page=${page}`, signal),
+  move: (
+    areaId: string,
+    item: InventoryItem,
+    type: InventoryMovementType,
+    quantity: number,
+    reason: string,
+    unit: string = "Pieza",
+  ) =>
+    sendJson<InventoryItem>(`inventory/areas/${areaId}/items/${item.id}/movements`, {
+      type,
+      quantity,
+      reason,
+      unit,
+    }),
+  movements: (areaId: string, item: InventoryItem, page: number, signal?: AbortSignal) =>
+    getJson<InventoryMovementPage>(
+      `inventory/areas/${areaId}/items/${item.id}/movements?page=${page}`,
+      signal,
+    ),
 };
 
 export function inventoryErrorMessage(error: unknown): string {

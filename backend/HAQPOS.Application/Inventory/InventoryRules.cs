@@ -24,6 +24,36 @@ public static class InventoryRules
         return text;
     }
 
+    public static string? Presentation(string? value)
+    {
+        var text = value?.Trim();
+        if (string.IsNullOrEmpty(text)) return null;
+        if (text.Length > 80 || text.Any(char.IsControl))
+            throw new UserOperationException("La presentación o contenido admite hasta 80 caracteres.");
+        return text;
+    }
+
+    public static string Unit(string? value)
+    {
+        return value?.Trim().ToUpperInvariant() switch
+        {
+            "PIEZA" => "Pieza",
+            "CAJA 12" => "Caja 12",
+            "CAJA 24" => "Caja 24",
+            "CAJA 48" => "Caja 48",
+            _ => throw new UserOperationException("Selecciona una unidad válida: pieza, caja 12, caja 24 o caja 48.")
+        };
+    }
+
+    public static int UnitFactor(string unit) => Unit(unit) switch
+    {
+        "Pieza" => 1,
+        "Caja 12" => 12,
+        "Caja 24" => 24,
+        "Caja 48" => 48,
+        _ => throw new UserOperationException("Selecciona una unidad válida.")
+    };
+
     public static string? Location(string? value)
     {
         var location = value?.Trim();

@@ -24,6 +24,9 @@ public sealed class PersistenceConfigurationTests
         var user = database.Model.FindEntityType(typeof(HAQPOS.Domain.Users.UserAccount))!;
         Assert.Contains(user.GetIndexes(), index => index.IsUnique && index.Properties.Single().Name == "EmployeeNumber");
         Assert.True(user.FindProperty("Version")!.IsConcurrencyToken);
-        Assert.Equal(3, database.Model.GetEntityTypes().Count());
+        var inventory = database.Model.FindEntityType(typeof(HAQPOS.Domain.Inventory.InventoryItem))!;
+        Assert.Contains(inventory.GetForeignKeys(), key => key.Properties.Single().Name == "AreaId");
+        var menu = database.Model.FindEntityType(typeof(HAQPOS.Domain.Menu.MenuProduct))!;
+        Assert.Contains(menu.GetForeignKeys(), key => key.Properties.Single().Name == "AreaId");
     }
 }

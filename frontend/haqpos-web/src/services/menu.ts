@@ -2,6 +2,7 @@ import { getJson, sendJson } from "@/services/http-client";
 
 export interface MenuProduct {
   id: string;
+  areaId: string | null;
   code: string;
   name: string;
   category: string;
@@ -21,22 +22,26 @@ export interface MenuProductPage {
 }
 
 export const menuApi = {
-  list: (search: string, page: number, signal?: AbortSignal) =>
+  list: (areaId: string, search: string, page: number, signal?: AbortSignal) =>
     getJson<MenuProductPage>(
-      `menu/products?${new URLSearchParams({ search, page: String(page) })}`,
+      `menu/areas/${areaId}/products?${new URLSearchParams({ search, page: String(page) })}`,
       signal,
     ),
-  create: (input: {
-    code: string;
-    name: string;
-    category: string;
-    description: string | null;
-    price: number;
-  }) => sendJson<MenuProduct>("menu/products", input),
+  unassigned: (page: number, signal?: AbortSignal) =>
+    getJson<MenuProductPage>(`menu/unassigned?page=${page}`, signal),
+  assignArea: (product: MenuProduct, areaId: string) =>
+    sendJson<MenuProduct>(`menu/unassigned/${product.id}/area`, {
+      areaId,
+      version: product.version,
+    }),
+  create: (
+    areaId: string,
+    input: { name: string; category: string; description: string | null; price: number },
+  ) => sendJson<MenuProduct>(`menu/areas/${areaId}/products`, input),
   update: (
+    areaId: string,
     product: MenuProduct,
     input: {
-      code: string;
       name: string;
       category: string;
       description: string | null;
@@ -44,12 +49,12 @@ export const menuApi = {
     },
   ) =>
     sendJson<MenuProduct>(
-      `menu/products/${product.id}`,
+      `menu/areas/${areaId}/products/${product.id}`,
       { ...input, version: product.version },
       "PUT",
     ),
-  setActive: (product: MenuProduct, isActive: boolean) =>
-    sendJson<MenuProduct>(`menu/products/${product.id}/status`, {
+  setActive: (areaId: string, product: MenuProduct, isActive: boolean) =>
+    sendJson<MenuProduct>(`menu/areas/${areaId}/products/${product.id}/status`, {
       isActive,
       version: product.version,
     }),

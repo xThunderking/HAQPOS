@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router";
+import { Link, NavLink, Outlet, useLocation } from "react-router";
+import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
   Boxes,
@@ -17,10 +18,48 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { Brand, Notice } from "@/components/user-interface";
 import { errorMessage } from "@/services/users";
+import { areasApi } from "@/services/areas";
 
 export function RootLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const areaMatch = location.pathname.match(/^\/(inventario|menu)\/areas\/([^/]+)\/?$/);
+  const areaId = areaMatch?.[2];
+  const areas = useQuery({
+    queryKey: ["area-options"],
+    queryFn: ({ signal }) => areasApi.options(signal),
+    enabled: Boolean(areaId),
+  });
+  const homePath =
+    user?.role === "Administrador"
+      ? "/usuarios"
+      : user?.role === "Supervisor"
+        ? "/inventario"
+        : "/cajas";
+  const moduleRoutes = [
+    { path: "/cajas", label: "Cajas" },
+    { path: "/areas", label: "Áreas" },
+    { path: "/clientes", label: "Clientes" },
+    { path: "/inventario", label: "Inventario" },
+    { path: "/menu", label: "Menú" },
+    { path: "/usuarios", label: "Control de usuarios" },
+    { path: "/actividad", label: "Actividad de seguridad" },
+  ];
+  const currentModule = moduleRoutes.find(
+    (route) => location.pathname === route.path || location.pathname.startsWith(`${route.path}/`),
+  );
+  const currentArea = areas.data?.find((area) => area.id === areaId);
+  const breadcrumbs = [{ label: "HAQPOS", to: homePath }];
+  if (
+    areaId &&
+    currentModule &&
+    (currentModule.path === "/inventario" || currentModule.path === "/menu")
+  ) {
+    breadcrumbs.push({ label: currentModule.label, to: currentModule.path });
+    breadcrumbs.push({ label: currentArea?.name ?? "Área", to: "" });
+  } else if (currentModule) {
+    breadcrumbs.push({ label: currentModule.label, to: "" });
+  }
   const [menuOpen, setMenuOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -35,22 +74,6 @@ export function RootLayout() {
       setBusy(false);
     }
   }
-  const title =
-    location.pathname === "/usuarios"
-      ? "Control de usuarios"
-      : location.pathname === "/actividad"
-        ? "Actividad de seguridad"
-        : location.pathname === "/inventario"
-          ? "Inventario"
-          : location.pathname === "/menu"
-            ? "Menú"
-            : location.pathname === "/cajas"
-              ? "Cajas"
-              : location.pathname === "/areas"
-                ? "Áreas"
-                : location.pathname === "/clientes"
-                  ? "Clientes"
-                  : "HAQPOS";
   return (
     <div className="app-shell">
       {menuOpen && (
@@ -119,7 +142,7 @@ export function RootLayout() {
       </aside>
       <div className="app-workspace">
         <header className="topbar">
-          <div className="breadcrumb">
+          <nav className="breadcrumb" aria-label="Ruta de navegación">
             <button
               className="icon-button mobile-only"
               aria-label="Abrir menú"
@@ -128,10 +151,23 @@ export function RootLayout() {
             >
               <Menu size={21} />
             </button>
-            <span>HAQPOS</span>
-            <ChevronRight size={14} />
-            <strong>{title}</strong>
-          </div>
+            {breadcrumbs.map((crumb, index) => (
+              <span className="breadcrumb-part" key={`${crumb.label}-${index}`}>
+                {index > 0 && <ChevronRight className="breadcrumb-separator" size={14} />}
+                {crumb.to ? (
+                  <Link
+                    className="breadcrumb-link"
+                    to={crumb.to}
+                    aria-current={index === breadcrumbs.length - 1 ? "page" : undefined}
+                  >
+                    {crumb.label}
+                  </Link>
+                ) : (
+                  <strong aria-current="page">{crumb.label}</strong>
+                )}
+              </span>
+            ))}
+          </nav>
           <div className="topbar-account">
             <span className="avatar avatar-small">{user?.fullName.slice(0, 1)}</span>
             <div>

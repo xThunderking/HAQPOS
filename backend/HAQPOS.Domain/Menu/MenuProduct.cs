@@ -3,6 +3,7 @@ namespace HAQPOS.Domain.Menu;
 public sealed class MenuProduct
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid? AreaId { get; set; }
     public string Code { get; set; } = "";
     public string Name { get; set; } = "";
     public string Category { get; set; } = "";

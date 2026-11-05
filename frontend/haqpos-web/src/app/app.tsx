@@ -62,7 +62,9 @@ function ApplicationRoutes() {
         <Route path="/areas" element={<AreasPage />} />
         <Route path="/clientes" element={<ClientesPage />} />
         <Route path="/inventario" element={<InventoryPage />} />
+        <Route path="/inventario/areas/:areaId" element={<InventoryPage />} />
         <Route path="/menu" element={<MenuPage />} />
+        <Route path="/menu/areas/:areaId" element={<MenuPage />} />
         <Route path="/usuarios" element={<UsersPage />} />
         <Route path="/actividad" element={<AuditPage />} />
         <Route

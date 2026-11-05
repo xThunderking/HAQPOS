@@ -1,4 +1,5 @@
 using HAQPOS.Application.Users;
+using HAQPOS.Application.Barcodes;
 
 namespace HAQPOS.Application.Menu;
 
@@ -12,6 +13,9 @@ public static class MenuRules
             throw new UserOperationException("La clave debe tener de 1 a 30 caracteres: letras, números, punto, guion o diagonal.");
         return code;
     }
+
+    public static string SystemBarcode() =>
+        BarcodeRules.Generate();
 
     public static string Text(string? value, string label, int maximumLength)
     {

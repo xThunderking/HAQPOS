@@ -57,8 +57,10 @@ public sealed class HaqposDbContext(DbContextOptions<HaqposDbContext> options) :
         });
         inventoryItems.HasKey(x => x.Id);
         inventoryItems.Property(x => x.Code).HasMaxLength(30).IsRequired();
-        inventoryItems.HasIndex(x => x.Code).IsUnique();
+        inventoryItems.HasIndex(x => new { x.AreaId, x.Code }).IsUnique();
+        inventoryItems.HasOne(x => x.Area).WithMany().HasForeignKey(x => x.AreaId).OnDelete(DeleteBehavior.Restrict);
         inventoryItems.Property(x => x.Name).HasMaxLength(120).IsRequired();
+        inventoryItems.Property(x => x.Presentation).HasMaxLength(80);
         inventoryItems.Property(x => x.Category).HasMaxLength(80).IsRequired();
         inventoryItems.Property(x => x.Unit).HasMaxLength(24).IsRequired();
         inventoryItems.Property(x => x.Location).HasMaxLength(80);
@@ -75,10 +77,13 @@ public sealed class HaqposDbContext(DbContextOptions<HaqposDbContext> options) :
             t.HasCheckConstraint("CK_InventoryMovements_QuantityLimit", "abs(\"Quantity\") <= 1000000000");
             t.HasCheckConstraint("CK_InventoryMovements_StockBefore", "\"StockBefore\" BETWEEN 0 AND 1000000000");
             t.HasCheckConstraint("CK_InventoryMovements_StockAfter", "\"StockAfter\" BETWEEN 0 AND 1000000000");
+            t.HasCheckConstraint("CK_InventoryMovements_InputSnapshot", "(\"InputQuantity\" IS NULL AND \"InputUnit\" IS NULL) OR (\"InputQuantity\" IS NOT NULL AND \"InputQuantity\" >= 0 AND \"InputUnit\" IN ('Pieza', 'Caja 12', 'Caja 24', 'Caja 48'))");
         });
         inventoryMovements.HasKey(x => x.Id);
         inventoryMovements.Property(x => x.Type).HasConversion<string>().HasMaxLength(12).IsRequired();
         inventoryMovements.Property(x => x.Quantity).HasPrecision(18, 3);
+        inventoryMovements.Property(x => x.InputQuantity).HasPrecision(18, 3);
+        inventoryMovements.Property(x => x.InputUnit).HasMaxLength(24);
         inventoryMovements.Property(x => x.StockBefore).HasPrecision(18, 3);
         inventoryMovements.Property(x => x.StockAfter).HasPrecision(18, 3);
         inventoryMovements.Property(x => x.Reason).HasMaxLength(250).IsRequired();
@@ -92,6 +97,8 @@ public sealed class HaqposDbContext(DbContextOptions<HaqposDbContext> options) :
             t.HasCheckConstraint("CK_MenuProducts_Price", "\"Price\" > 0 AND \"Price\" <= 999999.99");
         });
         menuProducts.HasKey(x => x.Id);
+        menuProducts.HasIndex(x => x.AreaId);
+        menuProducts.HasOne<AreaRecord>().WithMany().HasForeignKey(x => x.AreaId).OnDelete(DeleteBehavior.Restrict);
         menuProducts.Property(x => x.Code).HasMaxLength(30).IsRequired();
         menuProducts.HasIndex(x => x.Code).IsUnique();
         menuProducts.Property(x => x.Name).HasMaxLength(120).IsRequired();

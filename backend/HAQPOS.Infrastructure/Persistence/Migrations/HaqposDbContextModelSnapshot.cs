@@ -126,6 +126,9 @@ namespace HAQPOS.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("AreaId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasMaxLength(80)
@@ -159,6 +162,10 @@ namespace HAQPOS.Infrastructure.Persistence.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
 
+                    b.Property<string>("Presentation")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
                     b.Property<string>("Unit")
                         .IsRequired()
                         .HasMaxLength(24)
@@ -177,7 +184,7 @@ namespace HAQPOS.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Code")
+                    b.HasIndex("AreaId", "Code")
                         .IsUnique();
 
                     b.ToTable("InventoryItems", null, t =>
@@ -201,6 +208,14 @@ namespace HAQPOS.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid>("ItemId")
                         .HasColumnType("uuid");
+
+                    b.Property<decimal?>("InputQuantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<string>("InputUnit")
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
 
                     b.Property<DateTimeOffset>("OccurredAt")
                         .HasColumnType("timestamp with time zone");
@@ -237,6 +252,8 @@ namespace HAQPOS.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("CK_InventoryMovements_Quantity", "\"Quantity\" <> 0");
 
+                            t.HasCheckConstraint("CK_InventoryMovements_InputSnapshot", "(\"InputQuantity\" IS NULL AND \"InputUnit\" IS NULL) OR (\"InputQuantity\" IS NOT NULL AND \"InputQuantity\" >= 0 AND \"InputUnit\" IN ('Pieza', 'Caja 12', 'Caja 24', 'Caja 48'))");
+
                             t.HasCheckConstraint("CK_InventoryMovements_QuantityLimit", "abs(\"Quantity\") <= 1000000000");
 
                             t.HasCheckConstraint("CK_InventoryMovements_StockAfter", "\"StockAfter\" BETWEEN 0 AND 1000000000");
@@ -251,6 +268,9 @@ namespace HAQPOS.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AreaId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Category")
@@ -290,6 +310,8 @@ namespace HAQPOS.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AreaId");
 
                     b.HasIndex("Code")
                         .IsUnique();
@@ -456,6 +478,17 @@ namespace HAQPOS.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("HAQPOS.Domain.Inventory.InventoryItem", b =>
+                {
+                    b.HasOne("HAQPOS.Domain.Areas.AreaRecord", "Area")
+                        .WithMany()
+                        .HasForeignKey("AreaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Area");
+                });
+
             modelBuilder.Entity("HAQPOS.Domain.Inventory.InventoryMovement", b =>
                 {
                     b.HasOne("HAQPOS.Domain.Users.UserAccount", null)
@@ -469,6 +502,14 @@ namespace HAQPOS.Infrastructure.Persistence.Migrations
                         .HasForeignKey("ItemId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("HAQPOS.Domain.Menu.MenuProduct", b =>
+                {
+                    b.HasOne("HAQPOS.Domain.Areas.AreaRecord", null)
+                        .WithMany()
+                        .HasForeignKey("AreaId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("HAQPOS.Domain.Users.UserAccount", b =>

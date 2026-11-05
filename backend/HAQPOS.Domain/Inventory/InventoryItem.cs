@@ -1,10 +1,15 @@
+using HAQPOS.Domain.Areas;
+
 namespace HAQPOS.Domain.Inventory;
 
 public sealed class InventoryItem
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid AreaId { get; set; }
+    public AreaRecord? Area { get; set; }
     public string Code { get; set; } = "";
     public string Name { get; set; } = "";
+    public string? Presentation { get; set; }
     public string Category { get; set; } = "";
     public string Unit { get; set; } = "";
     public string? Location { get; set; }
@@ -32,6 +37,8 @@ public sealed class InventoryMovement
     public Guid ActorId { get; set; }
     public InventoryMovementType Type { get; set; }
     public decimal Quantity { get; set; }
+    public decimal? InputQuantity { get; set; }
+    public string? InputUnit { get; set; }
     public decimal StockBefore { get; set; }
     public decimal StockAfter { get; set; }
     public string Reason { get; set; } = "";

@@ -11,37 +11,46 @@ internal static class InventoryEndpoints
         var inventory = app.MapGroup("/api/inventory")
             .AddEndpointFilter<CsrfFilter>();
 
-        inventory.MapGet("/items", async (string? search, int? page, InventoryService service, CancellationToken ct) =>
-            Results.Ok(await service.ListAsync(search, page ?? 1, ct)))
+        inventory.MapGet("/areas/{areaId:guid}/items", async (Guid areaId, string? search, int? page,
+            InventoryService service, CancellationToken ct) =>
+            Results.Ok(await service.ListAsync(areaId, search, page ?? 1, ct)))
             .RequireAuthorization(UserAuthentication.ModuleViewPolicy);
 
-        inventory.MapPost("/items", async (CreateInventoryItemRequest request, HttpContext context,
+        inventory.MapGet("/areas/{areaId:guid}/items/barcode", async (Guid areaId, string barcode,
             InventoryService service, CancellationToken ct) =>
-            Results.Ok(await service.CreateAsync(request, context.User.UserId(),
+            Results.Ok(await service.FindByBarcodeAsync(areaId, barcode, ct)))
+            .RequireAuthorization(UserAuthentication.ModuleViewPolicy);
+
+        inventory.MapPost("/areas/{areaId:guid}/items", async (Guid areaId, CreateInventoryItemRequest request, HttpContext context,
+            InventoryService service, CancellationToken ct) =>
+            Results.Ok(await service.CreateAsync(areaId, request, context.User.UserId(),
                 context.Connection.RemoteIpAddress?.ToString(), ct)))
             .RequireAuthorization(UserAuthentication.InventoryPolicy);
 
-        inventory.MapPut("/items/{id:guid}", async (Guid id, UpdateInventoryItemRequest request, HttpContext context,
+        inventory.MapPut("/areas/{areaId:guid}/items/{id:guid}", async (Guid areaId, Guid id,
+            UpdateInventoryItemRequest request, HttpContext context,
             InventoryService service, CancellationToken ct) =>
-            Results.Ok(await service.UpdateAsync(id, request, context.User.UserId(),
+            Results.Ok(await service.UpdateAsync(areaId, id, request, context.User.UserId(),
                 context.Connection.RemoteIpAddress?.ToString(), ct)))
             .RequireAuthorization(UserAuthentication.InventoryPolicy);
 
-        inventory.MapPost("/items/{id:guid}/status", async (Guid id, SetInventoryItemStatusRequest request,
+        inventory.MapPost("/areas/{areaId:guid}/items/{id:guid}/status", async (Guid areaId, Guid id,
+            SetInventoryItemStatusRequest request,
             HttpContext context, InventoryService service, CancellationToken ct) =>
-            Results.Ok(await service.SetActiveAsync(id, request, context.User.UserId(),
+            Results.Ok(await service.SetActiveAsync(areaId, id, request, context.User.UserId(),
                 context.Connection.RemoteIpAddress?.ToString(), ct)))
             .RequireAuthorization(UserAuthentication.InventoryPolicy);
 
-        inventory.MapPost("/items/{id:guid}/movements", async (Guid id, InventoryMovementRequest request,
+        inventory.MapPost("/areas/{areaId:guid}/items/{id:guid}/movements", async (Guid areaId, Guid id,
+            InventoryMovementRequest request,
             HttpContext context, InventoryService service, CancellationToken ct) =>
-            Results.Ok(await service.MoveAsync(id, request, context.User.UserId(),
+            Results.Ok(await service.MoveAsync(areaId, id, request, context.User.UserId(),
                 context.Connection.RemoteIpAddress?.ToString(), ct)))
             .RequireAuthorization(UserAuthentication.InventoryPolicy);
 
-        inventory.MapGet("/items/{id:guid}/movements", async (Guid id, int? page,
+        inventory.MapGet("/areas/{areaId:guid}/items/{id:guid}/movements", async (Guid areaId, Guid id, int? page,
             InventoryService service, CancellationToken ct) =>
-            Results.Ok(await service.MovementsAsync(id, page ?? 1, ct)))
+            Results.Ok(await service.MovementsAsync(areaId, id, page ?? 1, ct)))
             .RequireAuthorization(UserAuthentication.ModuleViewPolicy);
     }
 }

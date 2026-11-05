@@ -104,6 +104,7 @@ export function AreasPage() {
     setEditorOpen(false);
     setMessage("El área se registró correctamente.");
     await queryClient.invalidateQueries({ queryKey: ["areas"] });
+    await queryClient.invalidateQueries({ queryKey: ["area-options"] });
     await queryClient.invalidateQueries({ queryKey: ["audit"] });
   }
 
