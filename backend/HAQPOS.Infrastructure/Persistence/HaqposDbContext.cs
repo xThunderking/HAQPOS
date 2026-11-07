@@ -9,6 +9,9 @@ namespace HAQPOS.Infrastructure.Persistence;
 
 public sealed class HaqposDbContext(DbContextOptions<HaqposDbContext> options) : DbContext(options)
 {
+    public const string AccentCharacters = "ÁÀÄÂÃÅÉÈËÊÍÌÏÎÓÒÖÔÕÚÙÜÛÑÝŸ";
+    public const string UnaccentedCharacters = "AAAAAAEEEEIIIIOOOOOUUUUNYY";
+
     public DbSet<UserAccount> Users => Set<UserAccount>();
     public DbSet<UserSession> UserSessions => Set<UserSession>();
     public DbSet<SecurityAuditEvent> SecurityAuditEvents => Set<SecurityAuditEvent>();
@@ -17,9 +20,20 @@ public sealed class HaqposDbContext(DbContextOptions<HaqposDbContext> options) :
     public DbSet<MenuProduct> MenuProducts => Set<MenuProduct>();
     public DbSet<ClientRecord> Clients => Set<ClientRecord>();
     public DbSet<AreaRecord> Areas => Set<AreaRecord>();
+    public DbSet<HAQPOS.Domain.Cash.CashShift> CashShifts => Set<HAQPOS.Domain.Cash.CashShift>();
+    public DbSet<HAQPOS.Domain.Cash.CashAccount> CashAccounts => Set<HAQPOS.Domain.Cash.CashAccount>();
+    public DbSet<HAQPOS.Domain.Cash.CashAccountLine> CashAccountLines => Set<HAQPOS.Domain.Cash.CashAccountLine>();
+
+    public static string Translate(string value, string from, string to) =>
+        throw new InvalidOperationException("Esta función solo se ejecuta como translate() en PostgreSQL.");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.HasDbFunction(typeof(HaqposDbContext).GetMethod(
+                nameof(Translate), [typeof(string), typeof(string), typeof(string)])!)
+            .HasName("translate")
+            .IsBuiltIn();
+        CashModelConfiguration.Configure(modelBuilder);
         var users = modelBuilder.Entity<UserAccount>();
         users.ToTable("Users", t =>
         {

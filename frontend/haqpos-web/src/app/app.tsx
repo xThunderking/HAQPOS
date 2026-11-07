@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { queryClient } from "@/app/query-client";
 import { RootLayout } from "@/layouts/root-layout";
 import { CajasPage } from "@/pages/cajas-page";
+import { CashReceivablesPage } from "@/pages/cash-receivables-page";
 import { AreasPage } from "@/pages/areas-page";
 import { ClientesPage } from "@/pages/clientes-page";
 import { AuthProvider } from "@/app/auth";
@@ -59,6 +60,7 @@ function ApplicationRoutes() {
     <Routes>
       <Route element={<RootLayout />}>
         <Route path="/cajas" element={<CajasPage />} />
+        <Route path="/cuentas-por-cobrar" element={<CashReceivablesPage />} />
         <Route path="/areas" element={<AreasPage />} />
         <Route path="/clientes" element={<ClientesPage />} />
         <Route path="/inventario" element={<InventoryPage />} />

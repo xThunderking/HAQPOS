@@ -34,7 +34,7 @@ public sealed class PostgresFactAttribute : FactAttribute
 }
 
 // Each test uses its own random schema. No production tables or accounts are modified.
-public sealed class UserManagementTests : IAsyncLifetime
+public sealed partial class UserManagementTests : IAsyncLifetime
 {
     private const string AdminEmployee = "50052143";
     private const string AdminPassword = "Olivo! Nube! Hospital! 947";

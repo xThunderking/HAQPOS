@@ -5,6 +5,7 @@ import {
   Activity,
   Boxes,
   MapPinned,
+  ReceiptText,
   ChevronRight,
   Coffee,
   LogOut,
@@ -38,6 +39,7 @@ export function RootLayout() {
         : "/cajas";
   const moduleRoutes = [
     { path: "/cajas", label: "Cajas" },
+    { path: "/cuentas-por-cobrar", label: "Cuentas por cobrar" },
     { path: "/areas", label: "Áreas" },
     { path: "/clientes", label: "Clientes" },
     { path: "/inventario", label: "Inventario" },
@@ -98,6 +100,9 @@ export function RootLayout() {
           <span className="nav-section-label">OPERACIÓN</span>
           <NavLink to="/cajas" onClick={() => setMenuOpen(false)}>
             <Store size={19} /> Cajas
+          </NavLink>
+          <NavLink to="/cuentas-por-cobrar" onClick={() => setMenuOpen(false)}>
+            <ReceiptText size={19} /> Cuentas por cobrar
           </NavLink>
           <NavLink to="/areas" onClick={() => setMenuOpen(false)}>
             <MapPinned size={19} /> Áreas

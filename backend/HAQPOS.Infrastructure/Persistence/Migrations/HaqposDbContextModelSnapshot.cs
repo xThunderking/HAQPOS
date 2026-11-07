@@ -63,6 +63,242 @@ namespace HAQPOS.Infrastructure.Persistence.Migrations
                     b.ToTable("Areas", (string)null);
                 });
 
+            modelBuilder.Entity("HAQPOS.Domain.Cash.CashAccount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("AmountReceived")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)");
+
+                    b.Property<string>("CardAuthorization")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("CardBank")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("CardLastFour")
+                        .HasMaxLength(4)
+                        .HasColumnType("character varying(4)");
+
+                    b.Property<string>("CardType")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<decimal?>("ChangeGiven")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<Guid?>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ClientName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsExternal")
+                        .HasColumnType("boolean");
+
+                    b.Property<long>("Number")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Number"));
+
+                    b.Property<string>("Office")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<DateTimeOffset>("OpenedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("PaymentDetailsComplete")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("PaymentMethod")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("RegistrationNumber")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<Guid>("ShiftId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("Number")
+                        .IsUnique();
+
+                    b.HasIndex("ShiftId", "Status");
+
+                    b.ToTable("CashAccounts", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CashAccounts_PaymentDetails", "(\"PaymentDetailsComplete\" = FALSE AND \"AmountReceived\" IS NULL AND \"ChangeGiven\" IS NULL AND \"CardLastFour\" IS NULL AND \"CardAuthorization\" IS NULL AND \"CardBank\" IS NULL AND \"CardType\" IS NULL) OR (\"PaymentDetailsComplete\" = TRUE AND ((\"PaymentMethod\" = 'EFECTIVO' AND \"AmountReceived\" >= \"Total\" AND \"ChangeGiven\" = \"AmountReceived\" - \"Total\" AND \"CardLastFour\" IS NULL AND \"CardAuthorization\" IS NULL AND \"CardBank\" IS NULL AND \"CardType\" IS NULL) OR (\"PaymentMethod\" = 'TARJETA' AND \"AmountReceived\" IS NULL AND \"ChangeGiven\" IS NULL AND \"CardLastFour\" ~ '^[0-9]{4}$' AND length(\"CardAuthorization\") BETWEEN 1 AND 40 AND length(\"CardBank\") BETWEEN 1 AND 80 AND \"CardType\" IN ('CREDITO','DEBITO')) OR (\"PaymentMethod\" IN ('CXC','CORTESIA') AND \"AmountReceived\" IS NULL AND \"ChangeGiven\" IS NULL AND \"CardLastFour\" IS NULL AND \"CardAuthorization\" IS NULL AND \"CardBank\" IS NULL AND \"CardType\" IS NULL)))");
+
+                            t.HasCheckConstraint("CK_CashAccounts_Status", "(\"Status\" = 'Abierta' AND \"ClosedAt\" IS NULL AND \"PaymentMethod\" IS NULL) OR (\"Status\" = 'Pagada' AND \"ClosedAt\" IS NOT NULL AND ((\"PaymentMethod\" IN ('EFECTIVO','TARJETA') AND \"Total\" > 0) OR (\"PaymentMethod\" = 'CORTESIA' AND \"Category\" = 'CORTESIA' AND \"Total\" = 0))) OR (\"Status\" = 'Pendiente' AND \"ClosedAt\" IS NOT NULL AND \"PaymentMethod\" = 'CXC' AND \"Total\" > 0) OR (\"Status\" = 'Cancelada' AND \"ClosedAt\" IS NOT NULL AND \"PaymentMethod\" IS NULL)");
+
+                            t.HasCheckConstraint("CK_CashAccounts_Total", "\"Total\" BETWEEN 0 AND 999999999.99");
+                        });
+                });
+
+            modelBuilder.Entity("HAQPOS.Domain.Cash.CashAccountLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("AddedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid?>("InventoryItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("MenuProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("Presentation")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RemovalReason")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)");
+
+                    b.Property<DateTimeOffset?>("RemovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("InventoryItemId");
+
+                    b.HasIndex("MenuProductId");
+
+                    b.ToTable("CashAccountLines", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CashAccountLines_Price", "\"UnitPrice\" > 0 AND \"UnitPrice\" <= 999999.99");
+
+                            t.HasCheckConstraint("CK_CashAccountLines_Quantity", "\"Quantity\" BETWEEN 1 AND 100000");
+
+                            t.HasCheckConstraint("CK_CashAccountLines_Source", "(\"InventoryItemId\" IS NOT NULL AND \"MenuProductId\" IS NULL) OR (\"InventoryItemId\" IS NULL AND \"MenuProductId\" IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("HAQPOS.Domain.Cash.CashShift", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AreaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AreaName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<Guid>("CashierId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CashierName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EmployeeNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<long>("Number")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Number"));
+
+                    b.Property<DateTimeOffset>("OpenedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("OpeningAmount")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AreaId");
+
+                    b.HasIndex("CashierId")
+                        .IsUnique()
+                        .HasFilter("\"ClosedAt\" IS NULL");
+
+                    b.HasIndex("Number")
+                        .IsUnique();
+
+                    b.HasIndex("OpenedAt");
+
+                    b.ToTable("CashShifts", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CashShifts_OpeningAmount", "\"OpeningAmount\" BETWEEN 0 AND 999999999.99");
+                        });
+                });
+
             modelBuilder.Entity("HAQPOS.Domain.Clients.ClientRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -206,9 +442,6 @@ namespace HAQPOS.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ActorId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("ItemId")
-                        .HasColumnType("uuid");
-
                     b.Property<decimal?>("InputQuantity")
                         .HasPrecision(18, 3)
                         .HasColumnType("numeric(18,3)");
@@ -216,6 +449,9 @@ namespace HAQPOS.Infrastructure.Persistence.Migrations
                     b.Property<string>("InputUnit")
                         .HasMaxLength(24)
                         .HasColumnType("character varying(24)");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("OccurredAt")
                         .HasColumnType("timestamp with time zone");
@@ -250,9 +486,9 @@ namespace HAQPOS.Infrastructure.Persistence.Migrations
 
                     b.ToTable("InventoryMovements", null, t =>
                         {
-                            t.HasCheckConstraint("CK_InventoryMovements_Quantity", "\"Quantity\" <> 0");
-
                             t.HasCheckConstraint("CK_InventoryMovements_InputSnapshot", "(\"InputQuantity\" IS NULL AND \"InputUnit\" IS NULL) OR (\"InputQuantity\" IS NOT NULL AND \"InputQuantity\" >= 0 AND \"InputUnit\" IN ('Pieza', 'Caja 12', 'Caja 24', 'Caja 48'))");
+
+                            t.HasCheckConstraint("CK_InventoryMovements_Quantity", "\"Quantity\" <> 0");
 
                             t.HasCheckConstraint("CK_InventoryMovements_QuantityLimit", "abs(\"Quantity\") <= 1000000000");
 
@@ -465,6 +701,54 @@ namespace HAQPOS.Infrastructure.Persistence.Migrations
                     b.HasOne("HAQPOS.Domain.Users.UserAccount", null)
                         .WithMany()
                         .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HAQPOS.Domain.Cash.CashAccount", b =>
+                {
+                    b.HasOne("HAQPOS.Domain.Clients.ClientRecord", null)
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("HAQPOS.Domain.Cash.CashShift", null)
+                        .WithMany()
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HAQPOS.Domain.Cash.CashAccountLine", b =>
+                {
+                    b.HasOne("HAQPOS.Domain.Cash.CashAccount", null)
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("HAQPOS.Domain.Inventory.InventoryItem", null)
+                        .WithMany()
+                        .HasForeignKey("InventoryItemId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("HAQPOS.Domain.Menu.MenuProduct", null)
+                        .WithMany()
+                        .HasForeignKey("MenuProductId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("HAQPOS.Domain.Cash.CashShift", b =>
+                {
+                    b.HasOne("HAQPOS.Domain.Areas.AreaRecord", null)
+                        .WithMany()
+                        .HasForeignKey("AreaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("HAQPOS.Domain.Users.UserAccount", null)
+                        .WithMany()
+                        .HasForeignKey("CashierId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

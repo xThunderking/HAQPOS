@@ -23,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<MenuService>();
         services.AddScoped<ClientService>();
         services.AddScoped<AreaService>();
+        services.AddScoped<HAQPOS.Infrastructure.Cash.CashService>();
         services.AddDbContext<HaqposDbContext>(options =>
         {
             var connectionString = configuration.GetConnectionString("Haqpos");

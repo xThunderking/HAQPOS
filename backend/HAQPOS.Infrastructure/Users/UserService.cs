@@ -225,6 +225,9 @@ public sealed class UserService(HaqposDbContext db, PasswordSecurity passwords, 
             await db.Users.CountAsync(x => x.IsActive && x.Role == UserRole.Administrador, ct) <= 1)
             throw new UserOperationException("Debe permanecer al menos un administrador activo.");
         var area = await ResolveAreaAsync(request.Role, request.AreaId, ct);
+        if ((user.Role != request.Role || user.AreaId != area?.Id) &&
+            await db.CashShifts.AnyAsync(s => s.CashierId == user.Id && s.ClosedAt == null, ct))
+            throw new UserOperationException("Cierra la caja del usuario antes de cambiar su rol o área.", UserError.Conflict);
         if (user.Role != request.Role || user.IsActive != request.IsActive)
         {
             user.SecurityStamp = Guid.NewGuid();
@@ -264,6 +267,8 @@ public sealed class UserService(HaqposDbContext db, PasswordSecurity passwords, 
         }
 
         var action = user.AreaId is null ? "user.area_assigned" : "user.area_changed";
+        if (await db.CashShifts.AnyAsync(s => s.CashierId == user.Id && s.ClosedAt == null, ct))
+            throw new UserOperationException("Cierra la caja del usuario antes de cambiar su área.", UserError.Conflict);
         user.AreaId = area.Id;
         user.Area = area;
         user.SecurityStamp = Guid.NewGuid();

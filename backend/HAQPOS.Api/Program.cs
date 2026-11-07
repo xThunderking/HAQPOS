@@ -14,6 +14,7 @@ using HAQPOS.Api.Inventory;
 using HAQPOS.Api.Menu;
 using HAQPOS.Api.Clients;
 using HAQPOS.Api.Areas;
+using HAQPOS.Api.Cash;
 using HAQPOS.Domain.Users;
 using HAQPOS.Infrastructure.Users;
 using HAQPOS.Infrastructure.Inventory;
@@ -229,6 +230,7 @@ app.MapInventoryEndpoints();
 app.MapMenuEndpoints();
 app.MapClientEndpoints();
 app.MapAreaEndpoints();
+app.MapCashEndpoints();
 
 // An explicit local diagnostic: no schema changes and no automatic DB connection at startup.
 if (app.Environment.IsDevelopment())
